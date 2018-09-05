@@ -1,0 +1,6 @@
+*.out
+*.eps
+*.o
+*.mod
+tube*
+*~
