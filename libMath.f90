@@ -372,6 +372,7 @@ REAL(8) FUNCTION diracDelta(x1,y1,x2,y2,fwhm)
 !-------------------------------------------------------------------------------
 !..diracDelta=Int( Lorentzian(alpha+beta*x), from y1 to y2 )/(y2-y1)
 !..where y1=alpha+beta*x1 and y2=alpha+beta*x2
+!.. Lorentzian(x) = fwhm / (x**2 + fwhm**2) *1/pi
 !===============================================================================
   IMPLICIT NONE
 
@@ -384,8 +385,8 @@ REAL(8) FUNCTION diracDelta(x1,y1,x2,y2,fwhm)
   dk = x2-x1
   bb = y2 - y1
                 
-  a1 = 2.D0*y1 / fwhm
-  a2 = 2.D0*y2 / fwhm
+  a1 = y1 / fwhm
+  a2 = y2 / fwhm
   
   diracDelta = (DATAN(DBLE(a2)) - DATAN(DBLE(a1))) / (pi*bb)
   
