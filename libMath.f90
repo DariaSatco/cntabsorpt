@@ -370,7 +370,7 @@ REAL(8) FUNCTION diracDelta(x1,y1,x2,y2,fwhm)
 !===============================================================================
 ! Approximate Dirac delta function
 !-------------------------------------------------------------------------------
-!..diracDelta=Int( delta(alpha+beta*x), x=x1 to x=x2)/(x2-x1)
+!..diracDelta=Int( Lorentzian(alpha+beta*x), from y1 to y2 )/(y2-y1)
 !..where y1=alpha+beta*x1 and y2=alpha+beta*x2
 !===============================================================================
   IMPLICIT NONE
@@ -379,22 +379,15 @@ REAL(8) FUNCTION diracDelta(x1,y1,x2,y2,fwhm)
   REAL(8), PARAMETER     :: pi  = 3.141592654D0
   REAL(8), PARAMETER     :: tol = 1.D-7
       
-  REAL(8)                :: dk, aa, bb, spd, ratio, a1, a2
+  REAL(8)                :: dk, bb, a1, a2
       
   dk = x2-x1
-  aa = (y1*x2 - x1*y2) / dk
-  bb = (y2 - y1) / dk
+  bb = y2 - y1
                 
-  spd = 4.D0 * aa**2 + fwhm**2      
-  ratio = ABS(4.D0 * aa *(x1+x2) * bb/spd)
+  a1 = 2.D0*y1 / fwhm
+  a2 = 2.D0*y2 / fwhm
   
-  IF (ABS(ratio) <= tol) THEN
-     diracDelta = (2.D0*fwhm/spd - 8.D0*fwhm*aa*bb*(x1+x2) / spd**2)/pi
-  ELSE
-     a1 = 2.D0*y1 / fwhm
-     a2 = 2.D0*y2 / fwhm
-     diracDelta = (DATAN(DBLE(a2)) - DATAN(DBLE(a1))) / (pi*bb*dk)
-  END IF
+  diracDelta = (DATAN(DBLE(a2)) - DATAN(DBLE(a1))) / (pi*bb)
   
   RETURN
 
@@ -938,3 +931,35 @@ SUBROUTINE indexx(n,arr,indx)
 
 END SUBROUTINE indexx
 !*******************************************************************************
+!*******************************************************************************
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!! Added by Daria Satco !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+REAL(8) FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
+!===============================================================================
+! Approximate Dirac delta function
+!-------------------------------------------------------------------------------
+!..diracDelta=Int( f(alpha+beta*x), from y1 to y2 )/(y2-y1)
+!..where y1=alpha+beta*x1 and y2=alpha+beta*x2
+!.. f = x/( x**2 + fwhm**2 )
+!===============================================================================
+  IMPLICIT NONE
+
+  REAL(8), INTENT(in)    :: x1, x2, y1, y2, fwhm
+  REAL(8), PARAMETER     :: pi  = 3.141592654D0
+  REAL(8), PARAMETER     :: tol = 1.D-1
+
+  REAL(8)                :: dk, bb, a1, a2
+
+  dk = x2-x1
+  bb = (y2 - y1)
+
+  a1 = y1**2 + fwhm**2
+  a2 = y2**2 + fwhm**2
+  diracDelta_eps1 = DLOG(ABS(a2)/ABS(a1)) / (2*bb)
+
+  RETURN
+
+END FUNCTION diracDelta_eps1
+
+!*******************************************************************

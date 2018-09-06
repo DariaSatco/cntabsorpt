@@ -80,7 +80,6 @@ PROGRAM elopphtube
   REAL(8), ALLOCATABLE    :: hw_laser(:)     !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps2a(:)        !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps2a1(:)       !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eps2a_lor(:)    !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps1a(:)        !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps1a1(:)       !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eelspec(:)       !(nhw_laser)
@@ -515,14 +514,13 @@ PROGRAM elopphtube
   ALLOCATE(hw_laser(nhw_laser))
   ALLOCATE(eps2a(nhw_laser))
   ALLOCATE(eps2a1(nhw_laser))
-  ALLOCATE(eps2a_lor(nhw_laser))
   ALLOCATE(eps1a(nhw_laser))
   ALLOCATE(eps1a1(nhw_laser))
   ALLOCATE(alpha(nhw_laser))
   ALLOCATE(eelspec(nhw_laser))
   
   WRITE (*,*) '====================================================='
-  WRITE (*,*) '..Imaginary part of dielectric function'
+  WRITE (*,*) '..Real and Imaginary part of dielectric function'
   WRITE (*,*) '  and absorption coefficient (1/cm)'
   WRITE (*,*) '..Number of laser energies :',nhw_laser
   WRITE (*,*) '..Laser fwhm linewidth (eV):',laser_fwhm
@@ -531,34 +529,26 @@ PROGRAM elopphtube
   dep = hw_laser(2)-hw_laser(1)
 
 ! unit polarization vectors in complex notation (dimensionless)
-  !CALL polVector(laser_theta,e_laser)
   CALL polVector(laser_theta,epol)
 
-! eps2(hw) and alpha(hw) for reference z polarization (parallel to the tube axis)
-! the transverse polarization is not considered, because it is much weaker
-! in general the transverse component can be also studied
-  !epol = 0.D0
-  !epol(3) = 1.D0
+  CALL realDielEn_met1(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
+  CALL realDielEn_met2(nhw_laser,hw_laser,eps2a,eps1a1)   !Kramers-Kronig
 
-  CALL imagDielEn(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)
-
-  CALL realDielEn_met1(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,eps1a)
-  CALL realDielEn_met2(nhw_laser,hw_laser,eps2a,eps1a1)
+  CALL imagDielEn(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)  !From Lin's paper
+  CALL imagDielEn_met2(nhw_laser,hw_laser,eps1a,eps2a1)  !Kramers-Kronig
 
   CALL imagDielAlpha(nhw_laser,hw_laser,eps2a,refrac,alpha)
-  CALL imagDielEn_met2(nhw_laser,hw_laser,eps1a,eps2a1)
-  CALL imagDielEn_LOR(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,eps2a_lor)
-
   CALL EELS(nhw_laser,hw_laser,eps1a1,eps2a,eelspec)
            
-! plot eps2(hw) and alpha(hw) for z polarizations
+! plot eps2(hw)
   OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps2a(ie)
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
-  
+
+! plot absorption alpha(hw)
   OPEN(unit=22,file='tube.alpha.xyy.'//outfile)
   DO ie = 1,nhw_laser
      WRITE(22,1001) hw_laser(ie),alpha(ie)
@@ -566,7 +556,7 @@ PROGRAM elopphtube
   CLOSE(unit=22)
   WRITE(*,*) 'alpha(hw) in tube.alpha.xyy.'//outfile
 
-  ! plot eps1(hw) for z polarizations
+! plot eps1(hw) (Lin's)
   OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps1a(ie)
@@ -574,7 +564,7 @@ PROGRAM elopphtube
   CLOSE(unit=22)
   WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
 
-  ! plot eps1(hw) for z polarizations
+! plot eps1(hw) (Kramers-Kronig)
   OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps1a1(ie)
@@ -582,7 +572,7 @@ PROGRAM elopphtube
   CLOSE(unit=22)
   WRITE(*,*) 'real part of dielectric function in tube.eps1kk.xyy.'//outfile
 
-  ! plot eps2(hw) for z polarizations
+! plot eps2(hw) (Kramers-Kronig)
   OPEN(unit=22,file='tube.eps2kk.xyy.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps2a1(ie)
@@ -590,21 +580,13 @@ PROGRAM elopphtube
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
 
-  ! plot eels(hw) for z polarizations
+! plot eels(hw)
   OPEN(unit=22,file='tube.eels.xyy.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eelspec(ie)
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'eels in tube.eels.xyy.'//outfile
-
-  ! plot eps2(hw) for z polarizations
-  OPEN(unit=22,file='tube.eps2_lor.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps2a_lor(ie)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of dielectric function in tube.eps_lor.xyy.'//outfile
 
 
 !----------------------------------------------------------------------
