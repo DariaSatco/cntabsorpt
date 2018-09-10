@@ -32,6 +32,8 @@ PROGRAM elopphtube
   INTEGER, SAVE, DIMENSION(0:4) :: nvecs = (/ 1, 3, 6, 3, 6 /)
   REAL(8), PARAMETER     :: pi    = 3.14159265358979D0
   REAL(8), PARAMETER     :: hbar  = 6.582D-4 !(eV-ps)
+  REAL(8), PARAMETER     :: h     = 4.13D-15 !(eV-s)
+  REAL(8), PARAMETER     :: e2    = 14.4     !(eV-A)
   REAL(8), PARAMETER     :: hbarc = 1.97D-5  !(eV cm)
 !-------------------------------------------------------------------------------
 ! variables for calling tube structure function
@@ -46,6 +48,7 @@ PROGRAM elopphtube
   REAL(8)                :: Tempr, rkT, doping, emine, emaxe, eminp, emaxp
   REAL(8)                :: epmin, epmax
   REAL(8)                :: laser_theta, laser_fwhm, dummy
+  REAL(8)                :: ebg
 !-------------------------------------------------------------------------------
 ! variables for electronic states
   INTEGER                :: iEii
@@ -82,8 +85,13 @@ PROGRAM elopphtube
   REAL(8), ALLOCATABLE    :: eps2a1(:)       !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps1a(:)        !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps1a1(:)       !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eelspec(:)       !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: alpha(:)        !(nhw_laser)  
+  REAL(8), ALLOCATABLE    :: eelspec(:)      !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: alpha(:)        !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: sigm1(:)        !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: sigm2(:)        !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: sigm2_intra(:)  !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: sigm2_inter(:)  !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: absorpt(:)      !(nhw_laser)
   COMPLEX(8)              :: cDipole(3)
 !-------------------------------------------------------------------------------
 ! variables for input and output files 
@@ -195,6 +203,7 @@ PROGRAM elopphtube
      epmax       = 5.D0
      laser_fwhm  =.15D0
      laser_theta = 0.D0
+     ebg         = 2.4D0
           
   END IF
       
@@ -220,7 +229,7 @@ PROGRAM elopphtube
      READ (22,*) nee,emine,emaxe
      READ (22,*) nep,eminp,emaxp
      READ (22,*) laser_theta
-     READ (22,*) laser_theta                            
+     READ (22,*) ebg
      CLOSE(unit=22)
       
   END IF
@@ -237,6 +246,7 @@ PROGRAM elopphtube
   WRITE (*,*) '(2)  Chiral indices (n,m)           :',n,m
   WRITE (*,*) '(3)  Doping (n-p) per length (1/A)  :',doping
   WRITE (*,*) '(4)  Refractive index               :',refrac
+  WRITE (*,*) '(5)  Background dielectric permettivity:', ebg
   WRITE (*,*) '-----------------------------------------------------'
   WRITE (*,*) '(6)  Index of transition energies   :',iEii
   WRITE (*,*) '-----------------------------------------------------'      
@@ -265,6 +275,7 @@ PROGRAM elopphtube
   IF (iedit == 2)  READ (*,*) n,m
   IF (iedit == 3)  READ (*,*) doping
   IF (iedit == 4)  READ (*,*) refrac  
+  IF (iedit == 5)  READ (*,*) ebg
   IF (iedit == 6)  READ (*,*) iEii
   IF (iedit == 11) READ (*,*) laser_theta  
   IF (iedit == 14) READ (*,*) nhw_laser
@@ -306,7 +317,7 @@ PROGRAM elopphtube
     WRITE (22,*) nee,emine,emaxe
     WRITE (22,*) nep,eminp,emaxp
     WRITE (22,*) laser_theta
-    WRITE (22,*) laser_theta                                    
+    WRITE (22,*) ebg
     CLOSE(unit=22)
 
 !----------------------------------------------------------------------
@@ -326,6 +337,7 @@ PROGRAM elopphtube
     WRITE (22,*) 'Chiral indices (n,m)           :',n,m
     WRITE (22,*) 'Doping (n-p) per length (1/A)  :',doping
     WRITE (22,*) 'Refractive index               :',refrac
+    WRITE (22,*) 'Background dielectric permettivity:', ebg
     WRITE (22,*) '----------------------------------------------------'
     WRITE (22,*) 'Number of laser photon energies:',nhw_laser
     WRITE (22,*) 'Laser photon energy range (eV) :',epmin,epmax
@@ -518,6 +530,11 @@ PROGRAM elopphtube
   ALLOCATE(eps1a1(nhw_laser))
   ALLOCATE(alpha(nhw_laser))
   ALLOCATE(eelspec(nhw_laser))
+  ALLOCATE(sigm1(nhw_laser))
+  ALLOCATE(sigm2(nhw_laser))
+  ALLOCATE(sigm2_intra(nhw_laser))
+  ALLOCATE(sigm2_inter(nhw_laser))
+  ALLOCATE(absorpt(nhw_laser))
   
   WRITE (*,*) '====================================================='
   WRITE (*,*) '..Real and Imaginary part of dielectric function'
@@ -531,14 +548,30 @@ PROGRAM elopphtube
 ! unit polarization vectors in complex notation (dimensionless)
   CALL polVector(laser_theta,epol)
 
-  CALL realDielEn_met1(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
-  CALL realDielEn_met2(nhw_laser,hw_laser,eps2a,eps1a1)   !Kramers-Kronig
+! real part of dielectric permittivity
+  CALL realDielEn(n,m,Tempr,doping,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
+  CALL realDielEn_met2(nhw_laser,ebg, hw_laser,eps2a,eps1a1)   !Kramers-Kronig
 
+! imaginary part of dielectric permittivity
   CALL imagDielEn(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)  !From Lin's paper
   CALL imagDielEn_met2(nhw_laser,hw_laser,eps1a,eps2a1)  !Kramers-Kronig
 
+! alpha
   CALL imagDielAlpha(nhw_laser,hw_laser,eps2a,refrac,alpha)
+! eels spectra
   CALL EELS(nhw_laser,hw_laser,eps1a1,eps2a,eelspec)
+
+! dynamical conductivity
+! real part
+  CALL RealDynConductivity(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,sigm1)
+! imaginary part
+  CALL ImagDynConductivity(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,sigm2)
+! absorption
+  CALL Absorption(nhw_laser,eps1a,eps2a,sigm1,sigm2,absorpt)
+! imaginary part of intraband conductivity
+  CALL ImagDynConductivityIntra(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,sigm2_intra)
+! imaginary part of interband conductivity
+  CALL ImagDynConductivityInter(n,m,Tempr,doping,epol,laser_fwhm,nhw_laser,hw_laser,sigm2_inter)
            
 ! plot eps2(hw)
   OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
@@ -587,6 +620,44 @@ PROGRAM elopphtube
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'eels in tube.eels.xyy.'//outfile
+
+! plot sigm1(hw)
+  OPEN(unit=22,file='tube.sigm1.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'real part of conductivity in tube.sigm1.xyy.'//outfile
+
+! plot sigm2(hw)
+  OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
+
+  OPEN(unit=22,file='tube.sigm2_intra.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), sigm2_intra(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'imaginary part of intraband conductivity in tube.sigm2_intra.xyy.'//outfile
+
+  OPEN(unit=22,file='tube.sigm2_inter.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), sigm2_inter(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'imaginary part of interband conductivity in tube.sigm2_inter.xyy.'//outfile
+
+! plot absorpt(hw)
+  OPEN(unit=22,file='tube.absorpt.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'absorption in tube.absorpt.xyy.'//outfile
 
 
 !----------------------------------------------------------------------
