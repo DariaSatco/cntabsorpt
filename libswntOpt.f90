@@ -33,11 +33,10 @@
 ! mainly used
 ! Lin, M. F., and Kenneth W-K. Shung. "Plasmons and optical properties of carbon nanotubes."
 ! Physical Review B 50.23 (1994): 17744.
-! - SUBROUTINE realDielEn_met1(n,m,Tempr,doping,epol,fwhm,ne,hw,eps1)
+! - SUBROUTINE realDielEn(n,m,Tempr,doping,epol,fwhm,ne,hw,eps1)
 ! - SUBROUTINE realDielEn_met2(ne,hw,eps2,eps1)
 ! - SUBROUTINE imagDielEn_met2(ne,hw,eps1,eps2)
 ! - SUBROUTINE EELS(ne,hw,eps1,eps2, eelspec)
-! - SUBROUTINE imagDielEn_LOR(n,m,Tempr,doping,epol,fwhm,ne,hw,eps2)
 !*******************************************************************************
 !*******************************************************************************
 SUBROUTINE polVector(theta,epol)
@@ -55,7 +54,7 @@ SUBROUTINE polVector(theta,epol)
   REAL(8), INTENT(in)    :: theta
 
 ! output variable
-  COMPLEX(8),INTENT(out) :: epol(3)
+  REAL(8),INTENT(out) :: epol(3)
       
 ! working variable
   REAL(8)                :: angle
@@ -114,16 +113,22 @@ SUBROUTINE imagDielAlpha(ne,hw,eps2,refrac,alpha)
 END SUBROUTINE imagDielAlpha
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE imagDielEn(n,m,Tempr,doping,epol,fwhm,ne,hw,eps2)
+SUBROUTINE imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,eps2)
 !===============================================================================
 ! Compute the imaginary part of the dielectric function as a function
 ! of probe photon energy
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons
+!  nk            number of k points
+!  rka           array of k points (1/A)
+!  Enk           array of energies (eV)
+!  cDipole       array of complex matrix elements (1/A)
 !  Tempr         lattice temperature (deg K)
-!  doping        net electron density (n-p) per unit length (1/A)
+!  Efermi        Fermi level
 !  epol(3)       complex unit electric polarization vector (none)
+!  ebg           background permittivity (dimensionless)
 !  fwhm          fwhm probe linewidth (eV)
 !  ne            number of probe photon energies
 !  hw(ne)        array of probe photon energies (eV)
@@ -134,110 +139,77 @@ SUBROUTINE imagDielEn(n,m,Tempr,doping,epol,fwhm,ne,hw,eps2)
       
 ! input variables
   INTEGER, INTENT(in)    :: n, m
-  
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+
+  REAL(8), INTENT(in)    :: rka(nk)
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+
   REAL(8), INTENT(in)    :: Tempr
-  REAL(8), INTENT(in)    :: doping       
-  
-  COMPLEX(8), INTENT(in) :: epol(3)
-  
+  REAL(8), INTENT(in)    :: Efermi
+
+  REAL(8), INTENT(in) :: epol(3)
+
   REAL(8), INTENT(in)    :: fwhm
-  
+
   INTEGER, INTENT(in)    :: ne
   REAL(8), INTENT(in)    :: hw(ne)
+
   
 ! output variable
   REAL(8),  INTENT(out)  :: eps2(ne)
 
 ! working variables and parameter
 
-  INTEGER, PARAMETER     :: nk = 81
-  
-  INTEGER, SAVE          :: nch  = 0
-  INTEGER, SAVE          :: mch  = 0
-  REAL(8), SAVE          :: TemprOld  = 0.D0
-  REAL(8), SAVE          :: dopingOld = 0.D0
-  
-  REAL(8), SAVE          :: rka(nk)
   REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
-  INTEGER, SAVE          :: nhex
-  REAL(8), SAVE, ALLOCATABLE :: Enk(:,:,:)  !(2,nhex,nk)
-  REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)      
+  REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
 
-  COMPLEX(8)             :: cDipole(3)
   REAL(8), ALLOCATABLE   :: ss(:) !(ne)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
-  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)
-  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)
+  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
+  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)  hbarm = h^2 / m
   REAL(8), PARAMETER     :: ptol  =  1.D-15
       
-  INTEGER                :: nHexagon, k, mu, ii, ie
+  INTEGER                :: k, mu, ii, ie
   INTEGER                :: n1, mu1, n2, mu2
 
-! for calling some functions  
-  REAL(8)                :: rkmin, rkmax, dk, rk, rkT
-  REAL(8)                :: trLength, diameter, tubeDiam, area
-  REAL(8)                :: Efermi, fermiLevel, fermi, Ekk
+! for calling some functions
+  REAL(8)                :: dk, rkT
+  REAL(8)                :: diameter, tubeDiam, area
+  REAL(8)                :: fermiLevel, fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta
   
   COMPLEX(8)             :: css
 
 ! first pass
-  IF (n /= nch .OR. m /= mch .OR. &
-       Tempr /= TemprOld .OR. doping /= dopingOld) THEN !assign correct values
-     
-     nch = n
-     mch = m
-     TemprOld  = Tempr
-     dopingOld = doping
-
-! number of hexagons in translational unit cell
-     nhex = nHexagon(n,m)
-
-! array of k points (1/Angstroms)
-     rkmax = pi/trLength(n,m)
-     rkmin = 0.D0
-     dk = (rkmax-rkmin) / (nk-1.D0)
-     DO k = 1, nk
-        rka(k) = rkmin + (k-1)*dk
-     END DO
-
-! compute energy bands En(k) (eV)      
-     IF (ALLOCATED(Enk) .EQV. .TRUE.) DEALLOCATE(Enk)
-     ALLOCATE(Enk(2,nhex,nk))
-     DO mu = 1, nhex 
-        DO k = 1, nk
-           rk=rka(k)
-           CALL etbTubeEn(n,m,mu,rk,Ek)        
-           DO ii = 1, 2
-              Enk(ii,mu,k) = Ek(ii)
-           END DO
-        END DO
-     END DO
-
 ! initial distribution functions (dimensionless)
      IF (ALLOCATED(fnk) .EQV. .TRUE.) DEALLOCATE(fnk)
      ALLOCATE(fnk(2,nhex,nk))
      rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
-     Efermi = fermiLevel(n,m,Tempr,doping)
      DO ii = 1, 2
         DO mu = 1, nhex
            DO k = 1, nk
               Ekk = Enk(ii,mu,k)
-              fnk(ii,mu,k) = fermi(Ekk,Efermi,rkT)      
+              fnk(ii,mu,k) = fermi(Ekk,Efermi,rkT)
            END DO
         END DO
      END DO
 
 ! dielectric function prefactor (eV**3 Angstroms**3)
+! --------------------------------------------------
+! see for the prefactor expression paper:
+! Sanders, G. D., et al.
+! "Resonant coherent phonon spectroscopy of single-walled carbon nanotubes."
+! Physical Review B 79.20 (2009): 205434.
+
      diameter = tubeDiam(n,m)        !(Angstroms)
      area = pi*(diameter/2.D0)**2    !(Angstroms**2)
      pre  = 8.D0*pi*e2*hbarm**2/area !(eV**3 Angstroms**3)
-  
-  END IF
 
 ! sum over n1, mu1, n2, mu2 and k
   IF (ALLOCATED(ss) .EQV. .TRUE.) DEALLOCATE(ss)
@@ -252,17 +224,15 @@ SUBROUTINE imagDielEn(n,m,Tempr,doping,epol,fwhm,ne,hw,eps2)
               IF (n1 == n2 .AND. mu1 == mu2) CYCLE
               
               DO k=1,nk
-                 rk=rka(k)
 
- !energy difference
+!energy difference
                  Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
 
 ! squared optical dipole matrix element (1/Angstroms**2)
-                 CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)      
                  css = 0.D0
                  !cycle for scalar product of polarization vector and dipole matrix element
                  DO ii = 1, 3
-                    css = css + epol(ii)*cDipole(ii)
+                    css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
                  END DO
                  ! square of matrix element
                  p2   = CDABS(css)**2
@@ -306,18 +276,18 @@ SUBROUTINE imagDielEn(n,m,Tempr,doping,epol,fwhm,ne,hw,eps2)
                     enk2n = (Enk(n2,mu2,k-1)+Enk(n2,mu2,k  ))/2.D0
                     enk2p = (Enk(n2,mu2,k  )+Enk(n2,mu2,k+1))/2.D0
                  END IF
-                 
+
 ! accumulate dielectric function vs photon energy
                  DO ie = 1, ne        
                     y1 = enk2n - enk1n - hw(ie)
                     y2 = enk2p - enk1p - hw(ie)
                     diracAvg = diracDelta(x1,y1,x2,y2,fwhm)  ! (1/eV)
-                    IF(diracAvg == 0.) CYCLE        
+                    IF (diracAvg == 0.) CYCLE
                     ! in original version
                     ! EEi = hw(ie)**2 / (Eab**4 + (8.D0*fwhm)**4)
                     ! changed to
                     ! EEi = 1/(hw(ie) * Eab)
-                    ss(ie) = ss(ie) + dk * p2df * diracAvg / (hw(ie) * Eab)  ! (1/Angstroms**3 1/eV**3)
+                    ss(ie) = ss(ie) + dk/2 * p2df * diracAvg / (hw(ie) * Eab)  ! (1/Angstroms**3 1/eV**3)
                  END DO
                  
               END DO
@@ -369,7 +339,7 @@ SUBROUTINE tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)
   CALL reducedCutLine(n,m,mu2,mmu2)            
       
   rkk = rk
-  CALL tbDipolXY(n,m,n1,mmu1,n2,mmu2,rkk,xDipole,yDipole)      
+  CALL tbDipolXY2(n,m,n1,mmu1,n2,mmu2,rkk,xDipole,yDipole)
   CALL tbDipolZ (n,m,n1,mmu1,n2,mmu2,rkk,zDipole)      
       
   cDipole(1) = xDipole
@@ -1168,7 +1138,7 @@ END FUNCTION gz
 ! Additional subroutines written be Daria Satco (2018)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !*******************************************************************************
-SUBROUTINE realDielEn(n,m,Tempr,doping,epol,ebg,fwhm,ne,hw,eps1)
+SUBROUTINE realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fwhm,ne,hw,eps1)
 !===============================================================================
 ! Compute the real part of the dielectric function as a function
 ! of probe photon energy
@@ -1177,8 +1147,13 @@ SUBROUTINE realDielEn(n,m,Tempr,doping,epol,ebg,fwhm,ne,hw,eps1)
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons
+!  nk            number of k points
+!  rka           array of k points (1/A)
+!  Enk           array of energies (eV)
+!  cDipole       array of complex matrix elements (1/A)
 !  Tempr         lattice temperature (deg K)
-!  doping        net electron density (n-p) per unit length (1/A)
+!  Efermi        Fermi level
 !  epol(3)       complex unit electric polarization vector (none)
 !  ebg           background permittivity (dimensionless)
 !  fwhm          fwhm probe linewidth (eV)
@@ -1191,13 +1166,20 @@ SUBROUTINE realDielEn(n,m,Tempr,doping,epol,ebg,fwhm,ne,hw,eps1)
 
 ! input variables
   INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+
+  REAL(8), INTENT(in)    :: rka(nk)
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
-  REAL(8), INTENT(in)    :: doping
+  REAL(8), INTENT(in)    :: Efermi
 
-  COMPLEX(8), INTENT(in) :: epol(3)
+  REAL(8), INTENT(in) :: epol(3)
 
-  REAL(8), INTENT(in)    :: fwhm, ebg
+  REAL(8), INTENT(in)    :: fwhm
+  REAL(8), INTENT(in)    :: ebg
 
   INTEGER, INTENT(in)    :: ne
   REAL(8), INTENT(in)    :: hw(ne)
@@ -1207,37 +1189,27 @@ SUBROUTINE realDielEn(n,m,Tempr,doping,epol,ebg,fwhm,ne,hw,eps1)
 
 ! working variables and parameter
 
-  INTEGER, PARAMETER     :: nk = 81
-
-  INTEGER, SAVE          :: nch  = 0
-  INTEGER, SAVE          :: mch  = 0
-  REAL(8), SAVE          :: TemprOld  = 0.D0
-  REAL(8), SAVE          :: dopingOld = 0.D0
-
-  REAL(8), SAVE          :: rka(nk)
   REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
-  INTEGER, SAVE          :: nhex
-  REAL(8), SAVE, ALLOCATABLE :: Enk(:,:,:)  !(2,nhex,nk)
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
 
-  COMPLEX(8)             :: cDipole(3)
   REAL(8), ALLOCATABLE   :: ss(:) !(ne)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
-  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)
-  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)
+  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
+  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)  hbarm = h^2 / m
   REAL(8), PARAMETER     :: ptol  =  1.D-15
+
   REAL(8)                :: eps0(ne)
 
-  INTEGER                :: nHexagon, k, mu, ii, ie
+  INTEGER                :: k, mu, ii, ie
   INTEGER                :: n1, mu1, n2, mu2
 
 ! for calling some functions
-  REAL(8)                :: rkmin, rkmax, dk, rk, rkT
-  REAL(8)                :: trLength, diameter, tubeDiam, area
-  REAL(8)                :: Efermi, fermiLevel, fermi, Ekk
+  REAL(8)                :: dk, rkT
+  REAL(8)                :: diameter, tubeDiam, area
+  REAL(8)                :: fermiLevel, fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
 
@@ -1248,44 +1220,10 @@ SUBROUTINE realDielEn(n,m,Tempr,doping,epol,ebg,fwhm,ne,hw,eps1)
 !background dielectric constant (dimensionless)
 eps0(:) = ebg
 
-  IF (n /= nch .OR. m /= mch .OR. &
-       Tempr /= TemprOld .OR. doping /= dopingOld) THEN !assign correct values
-
-     nch = n
-     mch = m
-     TemprOld  = Tempr
-     dopingOld = doping
-
-! number of hexagons in translational unit cell
-     nhex = nHexagon(n,m)
-
-! array of k points (1/Angstroms)
-     rkmax = pi/trLength(n,m)
-     rkmin = 0.D0
-     dk = (rkmax-rkmin) / (nk-1.D0)
-     DO k = 1, nk
-        rka(k) = rkmin + (k-1)*dk
-     END DO
-
-
-! compute energy bands En(k) (eV)
-     IF (ALLOCATED(Enk) .EQV. .TRUE.) DEALLOCATE(Enk)
-     ALLOCATE(Enk(2,nhex,nk))
-     DO mu = 1, nhex
-        DO k = 1, nk
-           rk=rka(k)
-           CALL etbTubeEn(n,m,mu,rk,Ek)
-           DO ii = 1, 2
-              Enk(ii,mu,k) = Ek(ii)
-           END DO
-        END DO
-     END DO
-
 ! initial distribution functions (dimensionless)
      IF (ALLOCATED(fnk) .EQV. .TRUE.) DEALLOCATE(fnk)
      ALLOCATE(fnk(2,nhex,nk))
      rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
-     Efermi = fermiLevel(n,m,Tempr,doping)
      DO ii = 1, 2
         DO mu = 1, nhex
            DO k = 1, nk
@@ -1296,11 +1234,15 @@ eps0(:) = ebg
      END DO
 
 ! dielectric function prefactor (eV**3 Angstroms**3)
+! --------------------------------------------------
+! see for the prefactor expression paper:
+! Sanders, G. D., et al.
+! "Resonant coherent phonon spectroscopy of single-walled carbon nanotubes."
+! Physical Review B 79.20 (2009): 205434.
+
      diameter = tubeDiam(n,m)        !(Angstroms)
      area = pi*(diameter/2.D0)**2    !(Angstroms**2)
      pre  = 8.D0*pi*e2*hbarm**2/area !(eV**3 Angstroms**3)
-
-  END IF
 
 ! sum over n1, mu1, n2, mu2 and k
   IF (ALLOCATED(ss) .EQV. .TRUE.) DEALLOCATE(ss)
@@ -1315,17 +1257,15 @@ eps0(:) = ebg
               IF (n1 == n2 .AND. mu1 == mu2) CYCLE
 
               DO k=1,nk
-                 rk=rka(k)
 
 !energy difference
                  Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
 
 ! squared optical dipole matrix element (1/Angstroms**2)
-                 CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)
                  css = 0.D0
                  !cycle for scalar product of polarization vector and dipole matrix element
                  DO ii = 1, 3
-                    css = css + epol(ii)*cDipole(ii)
+                    css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
                  END DO
                  ! square of matrix element
                  p2   = CDABS(css)**2
@@ -1379,7 +1319,7 @@ eps0(:) = ebg
                     diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm)  ! (1/eV)
                     IF(diracAvg == 0.) CYCLE
 
-                    ss(ie) = ss(ie) + dk/pi * p2df * diracAvg / ( hw(ie) * Eab )   ! eV**(-3) * Angstroms**(-3)
+                    ss(ie) = ss(ie) + dk/(2*pi) * p2df * diracAvg / ( hw(ie) * Eab )   ! eV**(-3) * Angstroms**(-3)
                  END DO
 
               END DO
@@ -1534,7 +1474,7 @@ SUBROUTINE EELS(ne,hw,eps1,eps2, eelspec)
 END SUBROUTINE EELS
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE RealDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm1)
+SUBROUTINE RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1)
 !===============================================================================
 ! Compute the real part of the dynamical conductivity as a function
 ! of probe photon energy
@@ -1543,24 +1483,36 @@ SUBROUTINE RealDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm1)
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons
+!  nk            number of k points
+!  rka           array of k points (1/A)
+!  Enk           array of energies (eV)
+!  cDipole       array of complex matrix elements (1/A)
 !  Tempr         lattice temperature (deg K)
-!  doping        net electron density (n-p) per unit length (1/A)
+!  Efermi        Fermi level
 !  epol(3)       complex unit electric polarization vector (none)
+!  ebg           background permittivity (dimensionless)
 !  fwhm          fwhm probe linewidth (eV)
 !  ne            number of probe photon energies
 !  hw(ne)        array of probe photon energies (eV)
 ! Output       :
-!  sigm1(ne)      real part of dynamical conductivity (none)
+!  sigm1(ne)      real part of dynamical conductivity (e^2/h)
 !===============================================================================
   IMPLICIT NONE
 
 ! input variables
   INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+
+  REAL(8), INTENT(in)    :: rka(nk)
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
-  REAL(8), INTENT(in)    :: doping
+  REAL(8), INTENT(in)    :: Efermi
 
-  COMPLEX(8), INTENT(in) :: epol(3)
+  REAL(8), INTENT(in) :: epol(3)
 
   REAL(8), INTENT(in)    :: fwhm
 
@@ -1572,80 +1524,35 @@ SUBROUTINE RealDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm1)
 
 ! working variables and parameter
 
-  INTEGER, PARAMETER     :: nk = 81
-
-  INTEGER, SAVE          :: nch  = 0
-  INTEGER, SAVE          :: mch  = 0
-  REAL(8), SAVE          :: TemprOld  = 0.D0
-  REAL(8), SAVE          :: dopingOld = 0.D0
-
-  REAL(8), SAVE          :: rka(nk)
   REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
-  INTEGER, SAVE          :: nhex
-  REAL(8), SAVE, ALLOCATABLE :: Enk(:,:,:)  !(2,nhex,nk)
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
 
-  COMPLEX(8)             :: cDipole(3)
   REAL(8), ALLOCATABLE   :: ss(:) !(ne)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
-  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)
-  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)
-  REAL(8), PARAMETER     :: h = 4.13D-15          !(eV-s)
+  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
+  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)  hbarm = h^2 / m
+  REAL(8), PARAMETER     :: h = 4.135D-15         !(eV-s)
   REAL(8), PARAMETER     :: ptol  =  1.D-15
 
-  INTEGER                :: nHexagon, k, mu, ii, ie
+  INTEGER                :: k, mu, ii, ie
   INTEGER                :: n1, mu1, n2, mu2
 
 ! for calling some functions
-  REAL(8)                :: rkmin, rkmax, dk, rk, rkT
-  REAL(8)                :: trLength, diameter, tubeDiam
-  REAL(8)                :: Efermi, fermiLevel, fermi, Ekk
+  REAL(8)                :: dk, rkT
+  REAL(8)                :: diameter, tubeDiam, area
+  REAL(8)                :: fermiLevel, fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta
 
   COMPLEX(8)             :: css
 
-! first pass
-  IF (n /= nch .OR. m /= mch .OR. &
-       Tempr /= TemprOld .OR. doping /= dopingOld) THEN !assign correct values
-
-     nch = n
-     mch = m
-     TemprOld  = Tempr
-     dopingOld = doping
-
-! number of hexagons in translational unit cell
-     nhex = nHexagon(n,m)
-
-! array of k points (1/Angstroms)
-     rkmax = pi/trLength(n,m)
-     rkmin = 0.D0
-     dk = (rkmax-rkmin) / (nk-1.D0)
-     DO k = 1, nk
-        rka(k) = rkmin + (k-1)*dk
-     END DO
-
-! compute energy bands En(k) (eV)
-     IF (ALLOCATED(Enk) .EQV. .TRUE.) DEALLOCATE(Enk)
-     ALLOCATE(Enk(2,nhex,nk))
-     DO mu = 1, nhex
-        DO k = 1, nk
-           rk=rka(k)
-           CALL etbTubeEn(n,m,mu,rk,Ek)
-           DO ii = 1, 2
-              Enk(ii,mu,k) = Ek(ii)
-           END DO
-        END DO
-     END DO
-
 ! initial distribution functions (dimensionless)
      IF (ALLOCATED(fnk) .EQV. .TRUE.) DEALLOCATE(fnk)
      ALLOCATE(fnk(2,nhex,nk))
      rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
-     Efermi = fermiLevel(n,m,Tempr,doping)
      DO ii = 1, 2
         DO mu = 1, nhex
            DO k = 1, nk
@@ -1655,11 +1562,9 @@ SUBROUTINE RealDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm1)
         END DO
      END DO
 
-! dielectric function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
+! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
      diameter = tubeDiam(n,m)        !(Angstroms)
-     pre  = 32.D0*pi*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
-
-  END IF
+     pre  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
 
 ! sum over n1, mu1, n2, mu2 and k
   IF (ALLOCATED(ss) .EQV. .TRUE.) DEALLOCATE(ss)
@@ -1674,17 +1579,15 @@ SUBROUTINE RealDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm1)
               IF (n1 == n2 .AND. mu1 == mu2) CYCLE
 
               DO k=1,nk
-                 rk=rka(k)
 
- !energy difference
+!energy difference
                  Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
 
 ! squared optical dipole matrix element (1/Angstroms**2)
-                 CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)
                  css = 0.D0
                  !cycle for scalar product of polarization vector and dipole matrix element
                  DO ii = 1, 3
-                    css = css + epol(ii)*cDipole(ii)
+                    css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
                  END DO
                  ! square of matrix element
                  p2   = CDABS(css)**2
@@ -1736,7 +1639,7 @@ SUBROUTINE RealDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm1)
                     diracAvg = diracDelta(x1,y1,x2,y2,fwhm)    !(1/eV)
                     IF(diracAvg == 0.) CYCLE
 
-                    ss(ie) = ss(ie) + dk*p2df*diracAvg/Eab     ! (1/Angstroms**3 1/eV**2)
+                    ss(ie) = ss(ie) + dk/2*p2df*diracAvg/Eab     ! (1/Angstroms**3 1/eV**2)
                  END DO
 
               END DO
@@ -1751,7 +1654,7 @@ SUBROUTINE RealDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm1)
 END SUBROUTINE RealDynConductivity
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE ImagDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
+SUBROUTINE ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
 !===============================================================================
 ! Compute the imaginary part of the dynamical conductivity as a function
 ! of probe photon energy
@@ -1760,24 +1663,36 @@ SUBROUTINE ImagDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons
+!  nk            number of k points
+!  rka           array of k points (1/A)
+!  Enk           array of energies (eV)
+!  cDipole       array of complex matrix elements (1/A)
 !  Tempr         lattice temperature (deg K)
-!  doping        net electron density (n-p) per unit length (1/A)
+!  Efermi        Fermi level
 !  epol(3)       complex unit electric polarization vector (none)
+!  ebg           background permittivity (dimensionless)
 !  fwhm          fwhm probe linewidth (eV)
 !  ne            number of probe photon energies
 !  hw(ne)        array of probe photon energies (eV)
 ! Output       :
-!  sigm2(ne)      imaginary part of dynamical conductivity (none)
+!  sigm2(ne)     imaginary part of dynamical conductivity (e^2/h)
 !===============================================================================
   IMPLICIT NONE
 
 ! input variables
   INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+
+  REAL(8), INTENT(in)    :: rka(nk)
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
-  REAL(8), INTENT(in)    :: doping
+  REAL(8), INTENT(in)    :: Efermi
 
-  COMPLEX(8), INTENT(in) :: epol(3)
+  REAL(8), INTENT(in) :: epol(3)
 
   REAL(8), INTENT(in)    :: fwhm
 
@@ -1789,81 +1704,36 @@ SUBROUTINE ImagDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
 
 ! working variables and parameter
 
-  INTEGER, PARAMETER     :: nk = 81
-
-  INTEGER, SAVE          :: nch  = 0
-  INTEGER, SAVE          :: mch  = 0
-  REAL(8), SAVE          :: TemprOld  = 0.D0
-  REAL(8), SAVE          :: dopingOld = 0.D0
-
-  REAL(8), SAVE          :: rka(nk)
   REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
-  INTEGER, SAVE          :: nhex
-  REAL(8), SAVE, ALLOCATABLE :: Enk(:,:,:)  !(2,nhex,nk)
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
 
-  COMPLEX(8)             :: cDipole(3)
   REAL(8), ALLOCATABLE   :: ss(:) !(ne)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
-  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)
-  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)
-  REAL(8), PARAMETER     :: h     = 4.13D-15      !(eV-s)
+  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
+  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)  hbarm = h^2 / m
+  REAL(8), PARAMETER     :: h     = 4.135D-15     !(eV-s)
   REAL(8), PARAMETER     :: ptol  =  1.D-15
 
-  INTEGER                :: nHexagon, k, mu, ii, ie
+  INTEGER                :: k, mu, ii, ie
   INTEGER                :: n1, mu1, n2, mu2
 
 ! for calling some functions
-  REAL(8)                :: rkmin, rkmax, dk, rk, rkT
-  REAL(8)                :: trLength, diameter, tubeDiam, area
-  REAL(8)                :: Efermi, fermiLevel, fermi, Ekk
+  REAL(8)                :: dk, rkT
+  REAL(8)                :: diameter, tubeDiam, area
+  REAL(8)                :: fermiLevel, fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
 
   COMPLEX(8)             :: css
 
-! first pass
-  IF (n /= nch .OR. m /= mch .OR. &
-       Tempr /= TemprOld .OR. doping /= dopingOld) THEN !assign correct values
-
-     nch = n
-     mch = m
-     TemprOld  = Tempr
-     dopingOld = doping
-
-! number of hexagons in translational unit cell
-     nhex = nHexagon(n,m)
-
-! array of k points (1/Angstroms)
-     rkmax = pi/trLength(n,m)
-     rkmin = 0.D0
-     dk = (rkmax-rkmin) / (nk-1.D0)
-     DO k = 1, nk
-        rka(k) = rkmin + (k-1)*dk
-     END DO
-
-
-! compute energy bands En(k) (eV)
-     IF (ALLOCATED(Enk) .EQV. .TRUE.) DEALLOCATE(Enk)
-     ALLOCATE(Enk(2,nhex,nk))
-     DO mu = 1, nhex
-        DO k = 1, nk
-           rk=rka(k)
-           CALL etbTubeEn(n,m,mu,rk,Ek)
-           DO ii = 1, 2
-              Enk(ii,mu,k) = Ek(ii)
-           END DO
-        END DO
-     END DO
 
 ! initial distribution functions (dimensionless)
      IF (ALLOCATED(fnk) .EQV. .TRUE.) DEALLOCATE(fnk)
      ALLOCATE(fnk(2,nhex,nk))
      rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
-     Efermi = fermiLevel(n,m,Tempr,doping)
      DO ii = 1, 2
         DO mu = 1, nhex
            DO k = 1, nk
@@ -1873,11 +1743,9 @@ SUBROUTINE ImagDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
         END DO
      END DO
 
-! dielectric function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
+! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
      diameter = tubeDiam(n,m)        !(Angstroms)
-     pre  = 32.D0*pi*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
-
-  END IF
+     pre  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
 
 ! sum over n1, mu1, n2, mu2 and k
   IF (ALLOCATED(ss) .EQV. .TRUE.) DEALLOCATE(ss)
@@ -1892,17 +1760,15 @@ SUBROUTINE ImagDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
               IF (n1 == n2 .AND. mu1 == mu2) CYCLE
 
               DO k=1,nk
-                 rk=rka(k)
 
 !energy difference
                  Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
 
 ! squared optical dipole matrix element (1/Angstroms**2)
-                 CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)
                  css = 0.D0
                  !cycle for scalar product of polarization vector and dipole matrix element
                  DO ii = 1, 3
-                    css = css + epol(ii)*cDipole(ii)
+                    css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
                  END DO
                  ! square of matrix element
                  p2   = CDABS(css)**2
@@ -1956,7 +1822,7 @@ SUBROUTINE ImagDynConductivity(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
                     diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm) ! (1/eV)
                     IF(diracAvg == 0.) CYCLE
 
-                    ss(ie) = ss(ie) + dk/pi * p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
+                    ss(ie) = ss(ie) + dk/(2*pi) * p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
                  END DO
 
               END DO
@@ -2006,33 +1872,46 @@ SUBROUTINE Absorption(ne,eps1,eps2,sigm1,sigm2,absorpt)
 END SUBROUTINE Absorption
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE ImagDynConductivityInter(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
+SUBROUTINE ImagDynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
 !===============================================================================
 ! Compute the imaginary part of the dynamical conductivity as a function
 ! of probe photon energy
+! only interband transition are considered in this subroutine
 ! expression from Sasaki, Ken-ichi, and Yasuhiro Tokura. "Theory of a Carbon-Nanotube Polarization Switch."
 ! Physical Review Applied 9.3 (2018): 034018.
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons
+!  nk            number of k points
+!  rka           array of k points (1/A)
+!  Enk           array of energies (eV)
+!  cDipole       array of complex matrix elements (1/A)
 !  Tempr         lattice temperature (deg K)
-!  doping        net electron density (n-p) per unit length (1/A)
+!  Efermi        Fermi level
 !  epol(3)       complex unit electric polarization vector (none)
+!  ebg           background permittivity (dimensionless)
 !  fwhm          fwhm probe linewidth (eV)
 !  ne            number of probe photon energies
 !  hw(ne)        array of probe photon energies (eV)
 ! Output       :
-!  sigm2(ne)      imaginary part of dynamical conductivity (none)
+!  sigm2(ne)     imaginary part of interband dynamical conductivity (e^2/h)
 !===============================================================================
   IMPLICIT NONE
 
 ! input variables
   INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+
+  REAL(8), INTENT(in)    :: rka(nk)
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
-  REAL(8), INTENT(in)    :: doping
+  REAL(8), INTENT(in)    :: Efermi
 
-  COMPLEX(8), INTENT(in) :: epol(3)
+  REAL(8), INTENT(in) :: epol(3)
 
   REAL(8), INTENT(in)    :: fwhm
 
@@ -2044,81 +1923,35 @@ SUBROUTINE ImagDynConductivityInter(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
 
 ! working variables and parameter
 
-  INTEGER, PARAMETER     :: nk = 81
-
-  INTEGER, SAVE          :: nch  = 0
-  INTEGER, SAVE          :: mch  = 0
-  REAL(8), SAVE          :: TemprOld  = 0.D0
-  REAL(8), SAVE          :: dopingOld = 0.D0
-
-  REAL(8), SAVE          :: rka(nk)
   REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
-  INTEGER, SAVE          :: nhex
-  REAL(8), SAVE, ALLOCATABLE :: Enk(:,:,:)  !(2,nhex,nk)
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
 
-  COMPLEX(8)             :: cDipole(3)
   REAL(8), ALLOCATABLE   :: ss(:) !(ne)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
-  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)
-  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)
-  REAL(8), PARAMETER     :: h     = 4.13D-15      !(eV-s)
+  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
+  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)  hbarm = h^2 / m
+  REAL(8), PARAMETER     :: h     = 4.135D-15     !(eV-s)
   REAL(8), PARAMETER     :: ptol  =  1.D-15
 
-  INTEGER                :: nHexagon, k, mu, ii, ie
+  INTEGER                :: k, mu, ii, ie
   INTEGER                :: n1, mu1, n2, mu2
 
 ! for calling some functions
-  REAL(8)                :: rkmin, rkmax, dk, rk, rkT
-  REAL(8)                :: trLength, diameter, tubeDiam, area
-  REAL(8)                :: Efermi, fermiLevel, fermi, Ekk
+  REAL(8)                :: dk, rkT
+  REAL(8)                :: diameter, tubeDiam, area
+  REAL(8)                :: fermiLevel, fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
 
   COMPLEX(8)             :: css
 
-! first pass
-  IF (n /= nch .OR. m /= mch .OR. &
-       Tempr /= TemprOld .OR. doping /= dopingOld) THEN !assign correct values
-
-     nch = n
-     mch = m
-     TemprOld  = Tempr
-     dopingOld = doping
-
-! number of hexagons in translational unit cell
-     nhex = nHexagon(n,m)
-
-! array of k points (1/Angstroms)
-     rkmax = pi/trLength(n,m)
-     rkmin = 0.D0
-     dk = (rkmax-rkmin) / (nk-1.D0)
-     DO k = 1, nk
-        rka(k) = rkmin + (k-1)*dk
-     END DO
-
-
-! compute energy bands En(k) (eV)
-     IF (ALLOCATED(Enk) .EQV. .TRUE.) DEALLOCATE(Enk)
-     ALLOCATE(Enk(2,nhex,nk))
-     DO mu = 1, nhex
-        DO k = 1, nk
-           rk=rka(k)
-           CALL etbTubeEn(n,m,mu,rk,Ek)
-           DO ii = 1, 2
-              Enk(ii,mu,k) = Ek(ii)
-           END DO
-        END DO
-     END DO
-
 ! initial distribution functions (dimensionless)
      IF (ALLOCATED(fnk) .EQV. .TRUE.) DEALLOCATE(fnk)
      ALLOCATE(fnk(2,nhex,nk))
      rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
-     Efermi = fermiLevel(n,m,Tempr,doping)
      DO ii = 1, 2
         DO mu = 1, nhex
            DO k = 1, nk
@@ -2128,11 +1961,9 @@ SUBROUTINE ImagDynConductivityInter(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
         END DO
      END DO
 
-! dielectric function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
+! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
      diameter = tubeDiam(n,m)        !(Angstroms)
-     pre  = 32.D0*pi*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
-
-  END IF
+     pre  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
 
 ! sum over n1, mu1, n2, mu2 and k
   IF (ALLOCATED(ss) .EQV. .TRUE.) DEALLOCATE(ss)
@@ -2151,17 +1982,15 @@ SUBROUTINE ImagDynConductivityInter(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
            DO mu2 = 1, nhex
 
               DO k=1,nk
-                 rk=rka(k)
 
-!energy difference
+! energy difference
                  Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
 
 ! squared optical dipole matrix element (1/Angstroms**2)
-                 CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)
                  css = 0.D0
                  !cycle for scalar product of polarization vector and dipole matrix element
                  DO ii = 1, 3
-                    css = css + epol(ii)*cDipole(ii)
+                    css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
                  END DO
                  ! square of matrix element
                  p2   = CDABS(css)**2
@@ -2215,7 +2044,7 @@ SUBROUTINE ImagDynConductivityInter(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
                     diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm) ! (1/eV)
                     IF(diracAvg == 0.) CYCLE
 
-                    ss(ie) = ss(ie) + dk/pi * p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
+                    ss(ie) = ss(ie) + dk/(2*pi) * p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
                  END DO
 
               END DO
@@ -2229,33 +2058,46 @@ SUBROUTINE ImagDynConductivityInter(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
 END SUBROUTINE ImagDynConductivityInter
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE ImagDynConductivityIntra(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
+SUBROUTINE ImagDynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
 !===============================================================================
 ! Compute the imaginary part of the dynamical conductivity as a function
 ! of probe photon energy
+! only intraband transition are considered in this subroutine
 ! expression from Sasaki, Ken-ichi, and Yasuhiro Tokura. "Theory of a Carbon-Nanotube Polarization Switch."
 ! Physical Review Applied 9.3 (2018): 034018.
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons
+!  nk            number of k points
+!  rka           array of k points (1/A)
+!  Enk           array of energies (eV)
+!  cDipole       array of complex matrix elements (1/A)
 !  Tempr         lattice temperature (deg K)
-!  doping        net electron density (n-p) per unit length (1/A)
+!  Efermi        Fermi level
 !  epol(3)       complex unit electric polarization vector (none)
+!  ebg           background permittivity (dimensionless)
 !  fwhm          fwhm probe linewidth (eV)
 !  ne            number of probe photon energies
 !  hw(ne)        array of probe photon energies (eV)
 ! Output       :
-!  sigm2(ne)      imaginary part of dynamical conductivity (none)
+!  sigm2(ne)     imaginary part of intraband dynamical conductivity (e^2/h)
 !===============================================================================
   IMPLICIT NONE
 
 ! input variables
   INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+
+  REAL(8), INTENT(in)    :: rka(nk)
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
-  REAL(8), INTENT(in)    :: doping
+  REAL(8), INTENT(in)    :: Efermi
 
-  COMPLEX(8), INTENT(in) :: epol(3)
+  REAL(8), INTENT(in) :: epol(3)
 
   REAL(8), INTENT(in)    :: fwhm
 
@@ -2267,81 +2109,36 @@ SUBROUTINE ImagDynConductivityIntra(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
 
 ! working variables and parameter
 
-  INTEGER, PARAMETER     :: nk = 81
-
-  INTEGER, SAVE          :: nch  = 0
-  INTEGER, SAVE          :: mch  = 0
-  REAL(8), SAVE          :: TemprOld  = 0.D0
-  REAL(8), SAVE          :: dopingOld = 0.D0
-
-  REAL(8), SAVE          :: rka(nk)
   REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
-  INTEGER, SAVE          :: nhex
-  REAL(8), SAVE, ALLOCATABLE :: Enk(:,:,:)  !(2,nhex,nk)
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
 
-  COMPLEX(8)             :: cDipole(3)
   REAL(8), ALLOCATABLE   :: ss(:) !(ne)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
-  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)
-  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)
-  REAL(8), PARAMETER     :: h     = 4.13D-15      !(eV-s)
+  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
+  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)  hbarm = h^2 / m
+  REAL(8), PARAMETER     :: h = 4.135D-15         !(eV-s)
   REAL(8), PARAMETER     :: ptol  =  1.D-15
 
-  INTEGER                :: nHexagon, k, mu, ii, ie
+  INTEGER                :: k, mu, ii, ie
   INTEGER                :: n1, mu1, n2, mu2
 
 ! for calling some functions
-  REAL(8)                :: rkmin, rkmax, dk, rk, rkT
-  REAL(8)                :: trLength, diameter, tubeDiam, area
-  REAL(8)                :: Efermi, fermiLevel, fermi, Ekk
+  REAL(8)                :: dk, rkT
+  REAL(8)                :: diameter, tubeDiam, area
+  REAL(8)                :: fermiLevel, fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
 
+
   COMPLEX(8)             :: css
-
-! first pass
-  IF (n /= nch .OR. m /= mch .OR. &
-       Tempr /= TemprOld .OR. doping /= dopingOld) THEN !assign correct values
-
-     nch = n
-     mch = m
-     TemprOld  = Tempr
-     dopingOld = doping
-
-! number of hexagons in translational unit cell
-     nhex = nHexagon(n,m)
-
-! array of k points (1/Angstroms)
-     rkmax = pi/trLength(n,m)
-     rkmin = 0.D0
-     dk = (rkmax-rkmin) / (nk-1.D0)
-     DO k = 1, nk
-        rka(k) = rkmin + (k-1)*dk
-     END DO
-
-
-! compute energy bands En(k) (eV)
-     IF (ALLOCATED(Enk) .EQV. .TRUE.) DEALLOCATE(Enk)
-     ALLOCATE(Enk(2,nhex,nk))
-     DO mu = 1, nhex
-        DO k = 1, nk
-           rk=rka(k)
-           CALL etbTubeEn(n,m,mu,rk,Ek)
-           DO ii = 1, 2
-              Enk(ii,mu,k) = Ek(ii)
-           END DO
-        END DO
-     END DO
 
 ! initial distribution functions (dimensionless)
      IF (ALLOCATED(fnk) .EQV. .TRUE.) DEALLOCATE(fnk)
      ALLOCATE(fnk(2,nhex,nk))
      rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
-     Efermi = fermiLevel(n,m,Tempr,doping)
      DO ii = 1, 2
         DO mu = 1, nhex
            DO k = 1, nk
@@ -2351,11 +2148,9 @@ SUBROUTINE ImagDynConductivityIntra(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
         END DO
      END DO
 
-! dielectric function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
+! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
      diameter = tubeDiam(n,m)        !(Angstroms)
-     pre  = 32.D0*pi*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
-
-  END IF
+     pre  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
 
 ! sum over n1, mu1, n2, mu2 and k
   IF (ALLOCATED(ss) .EQV. .TRUE.) DEALLOCATE(ss)
@@ -2372,17 +2167,15 @@ SUBROUTINE ImagDynConductivityIntra(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
               IF (mu1 == mu2) CYCLE
 
               DO k=1,nk
-                 rk=rka(k)
 
-!energy difference
+! energy difference
                  Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
 
 ! squared optical dipole matrix element (1/Angstroms**2)
-                 CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)
                  css = 0.D0
                  !cycle for scalar product of polarization vector and dipole matrix element
                  DO ii = 1, 3
-                    css = css + epol(ii)*cDipole(ii)
+                    css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
                  END DO
                  ! square of matrix element
                  p2   = CDABS(css)**2
@@ -2436,7 +2229,7 @@ SUBROUTINE ImagDynConductivityIntra(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
                     diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm) ! (1/eV)
                     IF(diracAvg == 0.) CYCLE
 
-                    ss(ie) = ss(ie) + dk/pi * p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
+                    ss(ie) = ss(ie) + dk/(2*pi) * p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
                  END DO
 
               END DO
@@ -2448,5 +2241,191 @@ SUBROUTINE ImagDynConductivityIntra(n,m,Tempr,doping,epol,fwhm,ne,hw,sigm2)
   sigm2 = -pre*ss
 
 END SUBROUTINE ImagDynConductivityIntra
+!*******************************************************************************
+!*******************************************************************************
+SUBROUTINE ImagDynConductivityIntra_test(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ss0, &
+difFermiDist,matrElementSq,diracAvgFunc)
+!===============================================================================
+! Compute the imaginary part of the dynamical conductivity as a function
+! of probe photon energy
+! expression from Sasaki, Ken-ichi, and Yasuhiro Tokura. "Theory of a Carbon-Nanotube Polarization Switch."
+! Physical Review Applied 9.3 (2018): 034018.
+!-------------------------------------------------------------------------------
+! Input        :
+!  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons
+!  nk            number of k points
+!  rka           array of k points (1/A)
+!  Enk           array of energies (eV)
+!  cDipole       array of complex matrix elements (1/A)
+!  Tempr         lattice temperature (deg K)
+!  Efermi        Fermi level
+!  epol(3)       complex unit electric polarization vector (none)
+!  ebg           background permittivity (dimensionless)
+!  fwhm          fwhm probe linewidth (eV)
+!  ne            number of probe photon energies
+!  hw(ne)        array of probe photon energies (eV)
+! Output       :
+!  sigm2(ne)      imaginary part of dynamical conductivity (none)
+!===============================================================================
+  IMPLICIT NONE
+
+! input variables
+  INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+
+  REAL(8), INTENT(in)    :: rka(nk)
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+
+  REAL(8), INTENT(in)    :: Tempr
+  REAL(8), INTENT(in)    :: Efermi
+
+  REAL(8), INTENT(in) :: epol(3)
+
+  REAL(8), INTENT(in)    :: fwhm
+
+
+! output variables
+  REAL(8)                :: ss0(2,nhex,nhex,nk)
+  REAL(8)                :: difFermiDist(2,nhex,nhex,nk)
+  REAL(8)                :: matrElementSq(2,nhex,nhex,nk)
+  REAL(8)                :: diracAvgFunc(2,nhex,nhex,nk)
+
+! working variables and parameter
+
+  REAL(8)                :: hw0
+  REAL(8)                :: Ek(2)
+  REAL(8), SAVE          :: pre
+
+
+  REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
+
+  REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
+  REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)
+  REAL(8), PARAMETER     :: hbarm =  7.62         !(eV-A**2)
+  REAL(8), PARAMETER     :: h     = 4.13D-15      !(eV-s)
+  REAL(8), PARAMETER     :: ptol  =  1.D-15
+
+  INTEGER                :: k, mu, ii, ie
+  INTEGER                :: n1, mu1, n2, mu2
+
+  INTEGER                :: max_position(4), min_position(4)
+
+! for calling some functions
+  REAL(8)                :: dk, rkT
+  REAL(8)                :: diameter, tubeDiam, area
+  REAL(8)                :: fermiLevel, fermi, Ekk
+  REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
+  REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
+
+  COMPLEX(8)             :: css
+
+! initial distribution functions (dimensionless)
+     IF (ALLOCATED(fnk) .EQV. .TRUE.) DEALLOCATE(fnk)
+     ALLOCATE(fnk(2,nhex,nk))
+     rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
+     DO ii = 1, 2
+        DO mu = 1, nhex
+           DO k = 1, nk
+              Ekk = Enk(ii,mu,k)
+              fnk(ii,mu,k) = fermi(Ekk,Efermi,rkT)
+           END DO
+        END DO
+     END DO
+
+! dielectric function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
+     diameter = tubeDiam(n,m)        !(Angstroms)
+     pre  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
+
+! sum over n1, mu1, n2, mu2 and k
+  ss0 = 0.D0
+
+  DO n1 = 1, 2   ! 1 <-> valence, 2 <-> conduction
+
+     n2 = n1     ! intraband transitions
+
+     DO mu1 = 1, nhex
+           DO mu2 = 1, nhex
+
+              IF (mu1 == mu2) CYCLE
+
+              DO k=1,nk
+
+! k-cell boundaries (1/A)
+                 IF (k == 1) THEN
+                    x1 = rka(1)
+                    x2 = (rka(k+1) + rka(k))/2.D0
+                 ELSE IF (k == nk) THEN
+                    x1 = (rka(k-1) + rka(k))/2.D0
+                    x2 = rka(nk)
+                 ELSE
+                    x1 = (rka(k-1) + rka(k))/2.D0
+                    x2 = (rka(k+1) + rka(k))/2.D0
+                 END IF
+                 dk = x2-x1
+
+! band energies at k-cell boundaries (eV)
+                 IF (k == 1) THEN
+                    enk1n = Enk(n1,mu1,1)
+                    enk1p = (Enk(n1,mu1,1)+Enk(n1,mu1,2))/2.D0
+                    enk2n = Enk(n2,mu2,1)
+                    enk2p = (Enk(n2,mu2,1)+Enk(n2,mu2,2))/2.D0
+                 ELSE IF (k == nk) THEN
+                    enk1n = (Enk(n1,mu1,nk-1)+Enk(n1,mu1,nk))/2.D0
+                    enk1p = Enk(n1,mu1,nk)
+                    enk2n = (Enk(n2,mu2,nk-1)+Enk(n2,mu2,nk))/2.D0
+                    enk2p = Enk(n2,mu2,nk)
+                 ELSE
+                    enk1n = (Enk(n1,mu1,k-1)+Enk(n1,mu1,k  ))/2.D0
+                    enk1p = (Enk(n1,mu1,k  )+Enk(n1,mu1,k+1))/2.D0
+                    enk2n = (Enk(n2,mu2,k-1)+Enk(n2,mu2,k  ))/2.D0
+                    enk2p = (Enk(n2,mu2,k  )+Enk(n2,mu2,k+1))/2.D0
+                 END IF
+
+! energy difference
+                 y1 = enk2n - enk1n - hw0
+                 y2 = enk2p - enk1p - hw0
+
+                 Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
+
+! squared optical dipole matrix element (1/Angstroms**2)
+                 css = 0.D0
+                 !cycle for scalar product of polarization vector and dipole matrix element
+                 DO ii = 1, 3
+                    css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
+                 END DO
+                 ! square of matrix element
+                 p2   = CDABS(css)**2
+                 matrElementSq(n1,mu1,mu2,k) = p2
+                 ! multiply by distribuion function
+                 p2df = p2*(fnk(n1,mu1,k) - fnk(n2,mu2,k))
+                 difFermiDist(n1,mu1,mu2,k) = fnk(n1,mu1,k) - fnk(n2,mu2,k)
+
+                 ! if small p2df then skip
+                 IF ( ABS(Eab) .lt. ptol ) THEN
+                    IF (ABS(p2df) > ptol) STOP 'something strange'
+                 ENDIF
+
+                 IF (ABS(p2df) <= ptol) CYCLE
+
+!**********************************************************
+
+! photon energy is fixed, hw = 0 eV
+                    hw0 = 0.0D0
+
+                    diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm) ! (1/eV)
+                    IF(diracAvg == 0.) CYCLE
+
+                    diracAvgFunc(n1,mu1,mu2,k) = diracAvg/Eab
+                    ss0(n1,mu1,mu2,k) = p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
+
+              END DO
+           END DO
+        END DO
+      END DO
+
+END SUBROUTINE ImagDynConductivityIntra_test
 !*******************************************************************************
 !*******************************************************************************

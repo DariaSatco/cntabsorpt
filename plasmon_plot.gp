@@ -1,9 +1,9 @@
 set terminal postscript eps size 15cm,10cm enhanced color font 'Helvetica,30' #--> put large font size!
-set output 'plasmon_160.eps'
+set output 'plasmon_1010_different_num_k.eps'
 set border linewidth 0.8
 
 set style line 11 linecolor rgb '#D22D56' linewidth 3 linetype 1 #--> you can define your own line style
-set style line 22 linecolor rgb '#b3b3b3' linewidth 2 linetype 0
+set style line 22 linecolor rgb '#666666' linewidth 2 linetype 0
 set style line 33 linecolor rgb '#000080' linewidth 7 linetype 0
 set style line 44 linecolor rgb '#90ee90' linewidth 3 linetype 1
 set style line 55 linecolor rgb '#006400' linewidth 7 linetype 0
@@ -15,7 +15,7 @@ set key
 set tics scale 2.5
 set tics front
 
-set yrange [0:14]
+#set yrange [0:14]
 #set ytics 0,0.05,0.2
 
 #Don't forget axis properties!
@@ -31,6 +31,7 @@ set mytics 5
 #plot "tube.elecDOS.xyy.1611" u 2:1 w l ls 11, \
 #"tube.elecDOS.xyy.1611" u 2:($2 > 0.88 ? $1 : 0):1 w filledcurves lc rgb '#cccccc'
 
-plot "tube.absorpt.xyy.160" u 1:2 title 'E_F = 0 eV' w l ls 11, \
-"tube.absorpt.xyy.16005" u 1:2 title 'E_F = 0.5 eV' w l ls 44, \
-"tube.absorpt.xyy.1601" u 1:2 title 'E_F = 1.04 eV' w l ls 66
+plot "tube.absorpt.xyy.100" u 1:2 title 'Nk = 100' w l ls 11, \
+"tube.absorpt.xyy.1000" u 1:2 title 'Nk = 1000' w l ls 44, \
+"tube.absorpt.xyy.10000" u 1:2 title 'Nk = 10 000' w l ls 66, \
+"tube.absorpt.xyy.10" u 1:2 title 'Nk = 10' w l ls 33

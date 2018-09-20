@@ -1,7 +1,7 @@
 # Fortran Compiler
 FC  = gfortran
 # Compilation flags
-F90FLAGS = -funderscoring -O0 -g -Wall -Wtabs -fbounds-check
+F90FLAGS = -funderscoring -O0 -g -Wall -Wtabs -fbounds-check -ffpe-trap='zero'
 # Linking with locally-installed LAPACK and BLAS libraries
 # Mac OS
 FLINKER = -framework Accelerate

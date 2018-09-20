@@ -3,7 +3,7 @@ set output 'epsilon_perp_1010.eps'
 set border linewidth 0.8
 
 set style line 11 linecolor rgb '#D22D56' linewidth 3 linetype 1 #--> you can define your own line style
-set style line 22 linecolor rgb '#b3b3b3' linewidth 2 linetype 0
+set style line 22 linecolor rgb '#666666' linewidth 2 linetype 0
 set style line 33 linecolor rgb '#000080' linewidth 7 linetype 0
 set style line 44 linecolor rgb '#90ee90' linewidth 3 linetype 1
 set style line 55 linecolor rgb '#006400' linewidth 7 linetype 0
@@ -29,7 +29,7 @@ set mytics 5
 #plot "tube.elecDOS.xyy.1611" u 2:1 w l ls 11, \
 #"tube.elecDOS.xyy.1611" u 2:($2 > 0.88 ? $1 : 0):1 w filledcurves lc rgb '#cccccc'
 
-plot "tube.eps1.xyy.10101" u 1:2 title 'Re {/Symbol e}_{/Symbol \136}, E_F = 1.07 eV' w l ls 11, \
-"tube.eps2.xyy.10101" u 1:2 title 'Im {/Symbol e}_{/Symbol \136}, E_F = 1.07 eV' w l ls 33, \
+plot "tube.eps1.xyy.101012" u 1:2 title 'Re {/Symbol e}_{/Symbol \136}, E_F = 1.22 eV' w l ls 11, \
+"tube.eps2.xyy.101012" u 1:2 title 'Im {/Symbol e}_{/Symbol \136}, E_F = 1.22 eV' w l ls 33, \
 "tube.eps1.xyy.1010" u 1:2 title 'Re {/Symbol e}_{/Symbol \136}, E_F = 0.0 eV' w l ls 44, \
 "tube.eps2.xyy.1010" u 1:2 title 'Im {/Symbol e}_{/Symbol \136}, E_F = 0.0 eV' w l ls 55

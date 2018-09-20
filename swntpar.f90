@@ -354,9 +354,8 @@ SUBROUTINE printTubeClass(n,m,iunit)
   
   REAL(8), PARAMETER     :: hbar = 6.582D-4 !(eV-ps)
   REAL(8), PARAMETER     :: pi   = 3.14159265358979D0
-  REAL(8)                :: Em(6)
   
-  INTEGER                :: id, idr, igcd, metal, nhex, nHexagon, mu, i
+  INTEGER                :: id, idr, igcd, metal, nhex, nHexagon, i
   REAL(8)                :: diam, tubeDiam
   REAL(8)                :: Tlength, trLength
   REAL(8)                :: chTheta

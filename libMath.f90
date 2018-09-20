@@ -16,7 +16,7 @@
 ! - FUNCTION vecLength(n,V)
 ! - FUNCTION pythagoras(a,b)
 ! - FUNCTION chebev(a,b,c,m,x)
-! - FUNCTION erf(x)
+! - FUNCTION erffunc(x)
 ! - FUNCTION fexp(x)
 ! - FUNCTION diracDelta(x1,y1,x2,y2,fwhm)
 ! - FUNCTION rtbis(func,x1,x2,xacc) 
@@ -181,14 +181,14 @@ REAL(8) FUNCTION chebev(a,b,c,m,x)
 END FUNCTION chebev
 !*******************************************************************************
 !*******************************************************************************
-REAL(8) FUNCTION erf(x)
+REAL(8) FUNCTION erffunc(x)
 !===============================================================================
 ! Calculate error function
 !-------------------------------------------------------------------------------
 ! Input        :
 !  x             any real number
 ! Output       :
-!  erf           erf(x)
+!  erffunc           erf(x)
 ! Note         :
 !  This function calls other functions and subroutines obtained from
 !  Numerical Recipes, i.e.
@@ -206,12 +206,12 @@ REAL(8) FUNCTION erf(x)
   REAL(8) :: gammp
 
   IF (x < 0.D0) THEN
-     erf = -gammp(.5,x**2)
+     erffunc = -gammp(.5D0,x**2)
   ELSE
-     erf = gammp(.5,x**2)
+     erffunc = gammp(.5D0,x**2)
   ENDIF
 
-END FUNCTION erf
+END FUNCTION erffunc
 
 !-------------------------------------------------------------------------------
 
@@ -224,7 +224,7 @@ REAL(8) FUNCTION gammp(a,x)
 ! use functions gcf, gser
   REAL(8) :: gammcf, gamser, gln
 
-  IF (x < 0.D0 .OR. a <= 0.D0) PAUSE 'bad arguments in gammp'
+  IF (x < 0.D0 .OR. a <= 0.D0) STOP 'bad arguments in gammp'
 
   IF (x < a + 1.D0) THEN
      CALL gser(gamser,a,x,gln)
@@ -277,7 +277,7 @@ SUBROUTINE gcf(gammcf,a,x,gln)
 
   END DO
 
-  PAUSE 'a too large, ITMAX too small in gcf'
+  STOP 'a too large, ITMAX too small in gcf'
 
 END SUBROUTINE gcf
 
@@ -297,7 +297,7 @@ SUBROUTINE gser(gamser,a,x,gln)
   
   gln = gammln(a)
   IF (x <= 0.D0) THEN
-     IF (x < 0.D0) PAUSE 'x < 0 in gser'
+     IF (x < 0.D0) STOP 'x < 0 in gser'
      gamser = 0.D0
      RETURN
   END IF
@@ -319,7 +319,7 @@ SUBROUTINE gser(gamser,a,x,gln)
 
   END DO
 
-  PAUSE 'a too large, ITMAX too small in gser'
+  STOP 'a too large, ITMAX too small in gser'
 
 END SUBROUTINE gser
 
@@ -352,7 +352,7 @@ REAL(8) FUNCTION gammln(xx)
 END FUNCTION gammln
 !*******************************************************************************
 !*******************************************************************************
-FUNCTION fexp(x)
+REAL(8) FUNCTION fexp(x)
 
   REAL(8), INTENT(in)    :: x
   REAL(8), PARAMETER     :: cutoff=-15.D0
@@ -381,15 +381,15 @@ REAL(8) FUNCTION diracDelta(x1,y1,x2,y2,fwhm)
   REAL(8), PARAMETER     :: tol = 1.D-7
       
   REAL(8)                :: dk, bb, a1, a2
-      
+
   dk = x2-x1
   bb = y2 - y1
-                
+
   a1 = y1 / fwhm
   a2 = y2 / fwhm
-  
+
   diracDelta = (DATAN(DBLE(a2)) - DATAN(DBLE(a1))) / (pi*bb)
-  
+
   RETURN
 
 END FUNCTION diracDelta
@@ -498,7 +498,7 @@ SUBROUTINE dos1Dgauss(nb,nk,rka,ldenk,Enk,E,fwhm,nn,DSn)
 
 ! working variables and parameter
   REAL(8), PARAMETER     :: pi = 3.14159265358979D0     
-  REAL(8)                :: gamma, rgamma, ss, A, B, erf, erf1, erf2
+  REAL(8)                :: gamma, rgamma, ss, A, B, erffunc, erf1, erf2
   INTEGER                :: ier, k
 
 ! check input for errors
@@ -525,8 +525,8 @@ SUBROUTINE dos1Dgauss(nb,nk,rka,ldenk,Enk,E,fwhm,nn,DSn)
      B = (Enk(k+1,nn)-Enk(k,nn))/(rka(k+1)-rka(k))
         
      IF (B /= 0.D0) THEN
-        erf2 = erf(rgamma*(Enk(k+1,nn)-E))
-        erf1 = erf(rgamma*(Enk(k  ,nn)-E))
+        erf2 = erffunc(rgamma*(Enk(k+1,nn)-E))
+        erf1 = erffunc(rgamma*(Enk(k  ,nn)-E))
         ss   = ss + (erf2-erf1)/B
      ELSE
         ss   = ss+DSQRT(gamma/pi)*EXP(-gamma*A**2)*(rka(k+1)-rka(k)) 
@@ -712,7 +712,7 @@ SUBROUTINE zbrac(func,x1,x2,succes)
   REAL(8)                :: f1, f2 
   LOGICAL                :: succes 
   
-  IF (x1 == x2) PAUSE 'you have to guess an initial range in zbrac' 
+  IF (x1 == x2) STOP 'you have to guess an initial range in zbrac'
   f1 = func(x1) 
   f2 = func(x2) 
   succes = .TRUE. 
@@ -744,7 +744,7 @@ FUNCTION rtbis(func,x1,x2,xacc)
   
   fmid = func(x2) 
   f    = func(x1) 
-  IF (f*fmid >= 0.D0) PAUSE 'root must be bracketed in rtbis' 
+  IF (f*fmid >= 0.D0) STOP 'root must be bracketed in rtbis'
   IF (f < 0.D0) THEN 
      rtbis = x1 
      dx    = x2-x1 
@@ -761,7 +761,7 @@ FUNCTION rtbis(func,x1,x2,xacc)
      IF (ABS(dx) < xacc .OR. fmid == 0.D0) RETURN 
   END DO
 
-  PAUSE 'too many bisections in rtbis'
+  STOP 'too many bisections in rtbis'
 
 END FUNCTION rtbis
 !*******************************************************************************
@@ -948,12 +948,11 @@ REAL(8) FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
 
   REAL(8), INTENT(in)    :: x1, x2, y1, y2, fwhm
   REAL(8), PARAMETER     :: pi  = 3.141592654D0
-  REAL(8), PARAMETER     :: tol = 1.D-1
 
   REAL(8)                :: dk, bb, a1, a2
 
   dk = x2-x1
-  bb = (y2 - y1)
+  bb = y2 - y1
 
   a1 = y1**2 + fwhm**2
   a2 = y2**2 + fwhm**2
