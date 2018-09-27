@@ -56,6 +56,7 @@ PROGRAM elopphtube
   REAL(8)                :: rkmin, rkmax, rkii, dk, rk, de, eii
   REAL(8), ALLOCATABLE   :: rka(:)           !(nk)
   REAL(8), ALLOCATABLE   :: Enk(:,:,:)       !(2,nhex,nk)
+  COMPLEX(8), ALLOCATABLE:: Znk(:,:,:,:)
   REAL(8), DIMENSION(2)  :: En               !(unit eV)
   REAL(8), ALLOCATABLE   :: EiiOpt(:), rkiiOpt(:)
   REAL(8), ALLOCATABLE   :: Enkt(:,:,:)      !(2,nhex,nk)
@@ -105,6 +106,7 @@ PROGRAM elopphtube
   REAL(8), ALLOCATABLE   :: difFermiDist(:,:,:,:)
   REAL(8), ALLOCATABLE   :: matrElementSq(:,:,:,:)
   REAL(8), ALLOCATABLE   :: diracAvgFunc(:,:,:,:)
+  REAL(8), ALLOCATABLE   :: j1j2(:,:)
   INTEGER                :: prefer_position(4), max_position(4), min_position(4)
 !----------------------------------------------------------------------
 !                              Main Menu
@@ -385,7 +387,8 @@ PROGRAM elopphtube
 ! allocate storage for energy bands
   nhex=nHexagon(n,m)
   ALLOCATE(rka(nk))
-  ALLOCATE(Enk(2,nhex,nk))      
+  ALLOCATE(Enk(2,nhex,nk))
+  ALLOCATE(Znk(2,2,nhex,nk))
   
 ! define k point array (1/A): -pi/T .. pi/T
   rkmax=pi/trLength(n,m)
@@ -400,6 +403,7 @@ PROGRAM elopphtube
         CALL etbTubeBand(n,m,mu,rk,En,Zk)
         DO ii=1,2
            Enk(ii,mu,k)=En(ii)
+           Znk(ii,1:2,mu,k)=Zk(ii,1:2)
         END DO
      END DO
   END DO
@@ -428,6 +432,14 @@ PROGRAM elopphtube
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'electronic En(k) in tube.Enk.xyy.'//outfile
+
+!Write wave function
+  OPEN(unit=22,file='tube.Znk.xyy.'//outfile)
+  DO k = 1, nk
+     WRITE(22,1001) rka(k)/rka(nk),((aimag(Znk(ii,1,mu,k)),ii=1,2),mu=1,nhex)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'electronic En(k) in tube.Znk.xyy.'//outfile
 
 !----------------------------------------------------------------------
 !            electron density of states (states/atom/eV)
@@ -800,8 +812,26 @@ PROGRAM elopphtube
     PRINT*, 'maximum at', max_position
     PRINT*, 'minimum at', min_position
 
+    max_position(1:4) = (/2, 10, 11, 1/)
+
   OPEN(unit=22,file='tube.test_max.xyy.'//outfile)
   DO k = 1, nk
+!      WRITE(22,1001) rka(k)/rka(nk), matrElementSq(1, 10, 11, k), &
+!      matrElementSq(1, 9, 10, k), &
+!      matrElementSq(1, 11, 12, k), &
+!      matrElementSq(1, 8, 9, k), &
+!      matrElementSq(1, 12, 13, k), &
+!      matrElementSq(1, 7, 8, k)
+!      WRITE(22,1001) rka(k)/rka(nk), matrElementSq(1, 0, 0, k), &
+!      matrElementSq(1, 1, 1, k), &
+!      matrElementSq(1, 2, 2, k), &
+!      matrElementSq(1, 3, 3, k), &
+!      matrElementSq(1, 4, 4, k), &
+!      matrElementSq(1, 5, 5, k), &
+!      matrElementSq(1, 6, 6, k), &
+!      matrElementSq(1, 7, 7, k), &
+!      matrElementSq(1, 8, 8, k), &
+!      matrElementSq(1, 9, 9, k)
      WRITE(22,1001) rka(k)/rka(nk), ss0(max_position(1), max_position(2), max_position(3), k), &
      difFermiDist(max_position(1), max_position(2), max_position(3), k), &
      matrElementSq(max_position(1), max_position(2), max_position(3), k), &
@@ -840,7 +870,8 @@ PROGRAM elopphtube
   CLOSE(unit=22)
   WRITE(*,*) 'test opposite min in file tube.test_min_op.xyy.'//outfile
 
-  prefer_position(1:4) = (/ 2, 10, 9, 1 /)
+
+  prefer_position(1:4) = (/ 2, 9, 10, 1 /)
 
   OPEN(unit=22,file='tube.test_max_mine.xyy.'//outfile)
   DO k = 1, nk
@@ -872,6 +903,9 @@ prefer_position(1:4) = (/ 2, 12, 11, 1 /)
  WRITE(*,*) '====================================================='
  WRITE(*,*) 'Fermi level: ', 'from input', Efermi, 'from doping', fermiLevel(n,m,Tempr,doping)
 
+!ALLOCATE(j1j2(nhex,2))
+!CALL getHexagonPosition(n,m,nhex,j1j2)
+!DEALLOCATE(j1j2)
 !----------------------------------------------------------------------
 !                          format statements
 !----------------------------------------------------------------------

@@ -1,5 +1,5 @@
 set terminal postscript eps size 15cm,10cm enhanced color font 'Helvetica,30' #--> put large font size!
-set output 're_sigm_perp_fig4_0eV.eps'
+set output 're_sigm_perp_160.eps'
 set border linewidth 0.8
 
 set style line 11 linecolor rgb '#D22D56' linewidth 3 linetype 1 #--> you can define your own line style
@@ -28,10 +28,8 @@ set ylabel 'Re ({/Symbol s}_{/Symbol \136}/{/Symbol e}_{/Symbol \136}) (e_2/h)' 
 #set ylabel 'Re {/Symbol s}_{||} (e_2/h)' offset 1.5,0.0
 set mytics 5
 
+#plot "tube.absorpt.xyy.160" u 1:2 title '(16,0)' w l ls 11, \
+#"tube.absorpt.xyy.1010" u 1:2 title '(10,10)' w l ls 66
 
-#plot "tube.sigm1.xyy.1010" u 1:2 title 'E_F = 0 eV' w l ls 11, \
-#"tube.sigm1.xyy.10101" u 1:2 title 'E_F = 1 eV' w l ls 44, \
-#"tube.sigm1.xyy.101012" u 1:2 title 'E_F = 1.22 eV' w l ls 66
-
-plot "tube.absorpt.xyy.160" u 1:2 title '(16,0)' w l ls 11, \
-"tube.absorpt.xyy.1010" u 1:2 title '(10,10)' w l ls 44, \
+plot "tube.sigm1.xyy.160" u 1:2 title 'E_F = 0 eV' w l ls 11, \
+"tube.sigm1.xyy.16004" u 1:2 title 'E_F = 0.4 eV' w l ls 66

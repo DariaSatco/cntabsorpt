@@ -37,6 +37,10 @@
 ! - SUBROUTINE realDielEn_met2(ne,hw,eps2,eps1)
 ! - SUBROUTINE imagDielEn_met2(ne,hw,eps1,eps2)
 ! - SUBROUTINE EELS(ne,hw,eps1,eps2, eelspec)
+! - SUBROUTINE ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
+! - SUBROUTINE RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1)
+! - SUBROUTINE ImagDynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
+! - SUBROUTINE ImagDynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
 !*******************************************************************************
 !*******************************************************************************
 SUBROUTINE polVector(theta,epol)
@@ -505,6 +509,8 @@ END SUBROUTINE tbDipolZ2
 !*******************************************************************************
 SUBROUTINE tbDipolXY(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
 !===============================================================================
+! WARNING : something wrong in this subroutine
+! PLEASE, use tbDipolXY2 !!!
 ! xy component of optical dipole matrix element for (n,m) carbon tube
 !        Dx = < n1,mu1,rk | d/dx | n2,mu2,rk > (1/Angstroms)
 !        Dy = < n1,mu1,rk | d/dy | n2,mu2,rk > (1/Angstroms)  
@@ -645,7 +651,6 @@ END SUBROUTINE tbDipolXY
 !*******************************************************************************
 SUBROUTINE tbDipolXY2(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
 !===============================================================================
-! another version of tbDipolXY -> different algorithm but yields same results
 ! xy component of optical dipole matrix element for (n,m) carbon tube
 !        Dx = < n1,mu1,rk | d/dx | n2,mu2,rk > (1/Angstroms)
 !        Dy = < n1,mu1,rk | d/dy | n2,mu2,rk > (1/Angstroms)  
@@ -687,7 +692,7 @@ SUBROUTINE tbDipolXY2(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
   INTEGER                :: mmu1,mmu2,nn1,nn2
   INTEGER                :: iatom, jatom, nn, ivec, j1, j2, NNatom
   
-  REAL(8)    rkk,phi
+  REAL(8)    rkk,phi, phi1, phi2
       
 ! check input for errors
   nhex=nHexagon(n,m)
@@ -773,13 +778,13 @@ SUBROUTINE tbDipolXY2(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
         DO ivec = 1, nvecs(nn)
       
            CALL NNj1j2(iatom,ivec,nn,j1,j2)
-           CALL phaseFactor(n,m,j1,j2,rk,mmu1,phi)
+           CALL phaseFactor(n,m,j1,j2,-rkk,-mmu1,phi)
            
            jatom = NNatom(iatom,nn)
-           CALL atomDipoleMX(n,m,iatom,0,0,jatom,j1,j2,dipole)
+           CALL atomDipoleMX(n,m,jatom,j1,j2,iatom,0,0,dipole)
 
-           c1 = CONJG( Zk1(iatom,nn1) )
-           c2 = Zk2(jatom,nn2)*CDEXP(ci*phi)       
+           c1 = CONJG( Zk1(jatom,nn1) )
+           c2 = Zk2(iatom,nn2)*CDEXP(ci*phi)
           
            xDipole = xDipole+c1*c2*(dipole(1)-ci*dipole(2))     
       
@@ -790,7 +795,7 @@ SUBROUTINE tbDipolXY2(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
   xDipole = xDipole/2.D0
   yDipole = ci*xDipole
       
-! use summetry relation to reverse the exchange bra and ket vectors
+! use symmetry relation to reverse the exchange bra and ket vectors
   IF (iflip == 1) THEN
      xDipole = -CONJG(xDipole)
      yDipole = -CONJG(yDipole)
@@ -2341,15 +2346,20 @@ difFermiDist,matrElementSq,diracAvgFunc)
 
 ! sum over n1, mu1, n2, mu2 and k
   ss0 = 0.D0
+  difFermiDist = 0.D0
+  matrElementSq = 0.D0
+  diracAvgFunc = 0.D0
 
   DO n1 = 1, 2   ! 1 <-> valence, 2 <-> conduction
 
+     !n1 = 1
+     !n2 = 2
      n2 = n1     ! intraband transitions
 
      DO mu1 = 1, nhex
            DO mu2 = 1, nhex
 
-              IF (mu1 == mu2) CYCLE
+              !IF (mu1 == mu2) CYCLE
 
               DO k=1,nk
 
@@ -2398,7 +2408,7 @@ difFermiDist,matrElementSq,diracAvgFunc)
                  END DO
                  ! square of matrix element
                  p2   = CDABS(css)**2
-                 matrElementSq(n1,mu1,mu2,k) = p2
+                 matrElementSq(n1,mu1,mu2,k) = sqrt(p2)
                  ! multiply by distribuion function
                  p2df = p2*(fnk(n1,mu1,k) - fnk(n2,mu2,k))
                  difFermiDist(n1,mu1,mu2,k) = fnk(n1,mu1,k) - fnk(n2,mu2,k)
@@ -2408,7 +2418,7 @@ difFermiDist,matrElementSq,diracAvgFunc)
                     IF (ABS(p2df) > ptol) STOP 'something strange'
                  ENDIF
 
-                 IF (ABS(p2df) <= ptol) CYCLE
+                 !IF (ABS(p2df) <= ptol) CYCLE
 
 !**********************************************************
 
@@ -2416,7 +2426,7 @@ difFermiDist,matrElementSq,diracAvgFunc)
                     hw0 = 0.0D0
 
                     diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm) ! (1/eV)
-                    IF(diracAvg == 0.) CYCLE
+                    !IF(diracAvg == 0.) CYCLE
 
                     diracAvgFunc(n1,mu1,mu2,k) = diracAvg/Eab
                     ss0(n1,mu1,mu2,k) = p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
@@ -2429,3 +2439,169 @@ difFermiDist,matrElementSq,diracAvgFunc)
 END SUBROUTINE ImagDynConductivityIntra_test
 !*******************************************************************************
 !*******************************************************************************
+SUBROUTINE tbDipolXYOrt(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
+!===============================================================================
+! another version of tbDipolXY2 -> different algorithm but yields same results
+! xy component of optical dipole matrix element for (n,m) carbon tube
+!        Dx = < n1,mu1,rk | d/dx | n2,mu2,rk > (1/Angstroms)
+!        Dy = < n1,mu1,rk | d/dy | n2,mu2,rk > (1/Angstroms)
+!-------------------------------------------------------------------------------
+! Input        :
+!  n,m           chiral vector coordinates in (a1,a2)
+!  n1            bra vector electronic state (n=1,2)
+!  mu1           bra vector electronic state manifold (0...NHexagon-1)
+!
+!  n2            ket vector electronic state (n=1,2)
+!  mu2           ket vector electronic state manifold (0...NHexagon-1)
+!
+!  rk            electronic state k (1/A) (-pi/T < k < pi/T)
+! Output       :
+!  xDipole       x component of dipole matrix element (1/Angstroms)
+!  yDipole       y component of dipole matrix element (1/Angstroms)
+!===============================================================================
+  IMPLICIT NONE
+  REAL(8), PARAMETER     :: rktol = .0005D0
+  REAL(8), PARAMETER     :: tol = 1.D-15
+
+! input variables
+  INTEGER, INTENT(in)    :: n, m, n1, mu1, n2, mu2
+  REAL(8), INTENT(in)    :: rk
+
+! output variables
+  COMPLEX(8),INTENT(out) :: xDipole, yDipole
+
+! working variables
+  INTEGER, SAVE, DIMENSION(0:4) :: nvecs = (/ 1, 3, 6, 3, 6 /)
+  COMPLEX(8), SAVE              :: ci = (0.D0,1.D0)
+
+  REAL(8),    DIMENSION(2)      :: Ek1, Ek2  !(2)
+  COMPLEX(8), DIMENSION(2,2)    :: Zk1, Zk2  !(2,2)
+
+  COMPLEX(8)                    :: c1, c2, newc
+  REAL(8)                       :: dipole(3)
+  INTEGER,ALLOCATABLE           :: j1j2(:,:)
+
+  INTEGER                :: nhex, nHexagon, ier, isel, iflip
+  INTEGER                :: mmu1,mmu2,nn1,nn2
+  INTEGER                :: iatom, jatom, nn, ivec, j1, j2, NNatom, jj
+
+  REAL(8)    rkk,phi, phi1, phi2, phi1k, phi2k
+
+! check input for errors
+  nhex=nHexagon(n,m)
+  IF (ALLOCATED(j1j2) .EQV. .TRUE.) DEALLOCATE(j1j2)
+  ALLOCATE(j1j2(nhex,2))
+
+  ier=0
+  IF (n1 /= 1 .AND. n1 /= 2) THEN
+     ier = 1
+     WRITE (*,*) 'tbDipolXY err: invalid n1:', n1
+  END IF
+
+  IF (mu1 < 1 .OR. mu1 > nhex) THEN
+     ier = 1
+     WRITE (*,*) 'tbDipolXY err: invalid mu1:', mu1
+  END IF
+
+  IF (n2 /= 1 .AND. n2 /= 2) THEN
+     ier = 1
+     WRITE (*,*) 'tbDipolXY err: invalid n2:', n2
+  END IF
+
+  IF(mu2 < 1 .OR. mu2 > nhex) THEN
+     ier = 1
+     WRITE(*,*) 'tbDipolXY err: invalid mu2:', mu2
+  END IF
+
+  IF (ier /= 0) STOP
+
+! initialize xDipole and yDipole
+  xDipole = 0.D0
+  yDipole = 0.D0
+
+! selection rule
+! Define states (nn1,mmu1) and (nn2,mmu2) so that mmu2 = mmu1+1
+  isel  = 0
+  iflip = 0
+
+  IF (mu2 == mu1+1) THEN
+     isel = 1
+     mmu1 = mu1
+     mmu2 = mu2
+     nn1  = n1
+     nn2  = n2
+  END IF
+
+  IF (mu2 == mu1-1) THEN
+     isel  = 1
+     iflip = 1 ! exchange bra and ket vectors
+     mmu1  = mu2
+     mmu2  = mu1
+     nn1   = n2
+     nn2   = n1
+  END IF
+
+  IF (mu1 == nhex .AND. mu2 == 1) THEN
+     isel = 1
+     mmu1 = mu1
+     mmu2 = mu2
+     nn1  = n1
+     nn2  = n2
+  END IF
+
+  IF (mu1 == 1 .AND. mu2 == nhex) THEN
+     isel  = 1
+     iflip = 1 ! exchange bra and ket vectors
+     mmu1  = mu2
+     mmu2  = mu1
+     nn1   = n2
+     nn2   = n1
+  END IF
+
+  IF (isel /= 1) RETURN
+
+! mmu2 = mmu1+1 case
+! electronic pi orbitals (mu1,k) and (mu2,k)
+  rkk = rk
+  IF (ABS(rkk) < rktol) rkk = rktol
+  CALL etbTubeBand(n,m,mmu1,rkk,Ek1,Zk1)
+  CALL etbTubeBand(n,m,mmu2,rkk,Ek2,Zk2)
+  CALL getHexagonPosition(n,m,nhex,j1j2)
+
+! compute x and y components of dipole vector (1/Angstroms)
+DO jj = 1,nhex
+  DO iatom = 1, 2
+     DO nn = 1, 4
+        DO ivec = 1, nvecs(nn)
+
+           CALL NNj1j2(iatom,ivec,nn,j1,j2)
+           CALL phaseFactor(n,m,j1j2(jj,1),j1j2(jj,2),-rk,-mmu1,phi1)
+           CALL phaseFactor(n,m,j1j2(jj,1)+j1,j1j2(jj,2)+j2,rk,mmu2,phi2)
+
+           jatom = NNatom(iatom,nn)
+           CALL atomDipoleMX(n,m,iatom,j1j2(jj,1),j1j2(jj,2),jatom,j1j2(jj,1)+j1,j1j2(jj,2)+j2,dipole)
+
+           c1 = CONJG( Zk1(iatom,nn1) )
+           c2 = Zk2(jatom,nn2)*CDEXP(ci*(phi1+phi2))
+
+           xDipole = xDipole+c1*c2*(dipole(1)-ci*dipole(2))
+
+        END DO
+     END DO
+  END DO
+END DO
+
+  xDipole = xDipole/2.D0*1.D0/nhex
+  yDipole = ci*xDipole
+
+! use symmetry relation to reverse the exchange bra and ket vectors
+  IF (iflip == 1) THEN
+     xDipole = -CONJG(xDipole)
+     yDipole = -CONJG(yDipole)
+  END IF
+
+  RETURN
+END SUBROUTINE tbDipolXYOrt
+!*******************************************************************************
+!*******************************************************************************
+

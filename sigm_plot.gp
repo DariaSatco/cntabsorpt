@@ -13,7 +13,7 @@ set key
 set tics scale 2.5
 set tics front
 
-#set yrange [-5:10]
+set xrange [0:2.5]
 #set ytics 0,0.05,0.2
 
 #Don't forget axis properties!

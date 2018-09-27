@@ -36,6 +36,8 @@
 ! - SUBROUTINE sqmatrix(n,m,iatom,ivec,nn,q,mu,Sq)
 ! - SUBROUTINE sjmatrix(n,m,iatom,ivec,nn,Sj)
 ! - SUBROUTINE reducedCutLine
+!!!!!!! Daria Satco added !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! - SUBROUTINE getHexagonPosition(n,m,nhex,j1j2)
 !*******************************************************************************
 !*******************************************************************************
 INTEGER FUNCTION NNatom(iatom,nn)
@@ -1446,3 +1448,62 @@ SUBROUTINE reducedCutLine(n,m,muin,muout)
       
 END SUBROUTINE reducedCutLine
 !*******************************************************************************
+!*******************************************************************************
+!-------------------------------------------------------------------------------
+!--------------- added by Daria Satco ------------------------------------------
+!-------------------------------------------------------------------------------
+SUBROUTINE getHexagonPosition(n,m,nhex,j1j2)
+!==============================================================================
+! calculates J=(j1,j2) which correspond to all hexagons within CNT cell
+! Input
+! n,m           chiral vector coordinates in a1,a2 basis
+! Output
+! j1j2          array of (j1,j2)   (nhex)
+!==============================================================================
+IMPLICIT NONE
+
+! input variables
+  INTEGER, INTENT(in)    :: n, m, nhex
+
+! output variable
+  INTEGER, INTENT(out)   :: j1j2(nhex,2)
+
+! working variables
+  INTEGER                :: it1, it2
+  REAL(8)                :: T(2)
+  REAL(8)                :: Ch(2)
+  REAL(8)                :: a1(2), a2(2)
+  INTEGER                :: j1,j2, nn
+  REAL(8)                :: cond1, cond2, cond3, cond4
+
+  CALL  trVecXY(n,m,it1,it2,T)
+  CALL  chVecXY(n,m,Ch)
+  CALL  unitVecXY(a1,a2)
+
+  nn = 0
+
+  DO j1 = 0, it1+n
+    DO j2 = it2, m
+
+        cond1 = real(it2*j1)/it1
+        cond2 = real(m*j1)/n
+        cond3 = real(it2*(j1-n))/it1
+        cond4 = real(m*(j1-it1))/n
+
+        IF ( (cond1 .le. REAL(j2)) .and. (cond2 .ge. REAL(j2)) .and. (cond3 > REAL(j2-m)) .and. (cond4 < REAL(j2-it2)) ) THEN
+            nn = nn + 1
+            j1j2(nn,1) = j1
+            j1j2(nn,2) = j2
+
+!            PRINT*, j1j2(nn,1), j1j2(nn,2)
+
+        END IF
+
+    END DO
+  END DO
+
+IF ( nhex .ne. nn ) STOP 'wrong j1j2 array'
+
+END SUBROUTINE getHexagonPosition
+!*****************************************************************************
+!*****************************************************************************
