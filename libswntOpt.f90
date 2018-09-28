@@ -290,11 +290,12 @@ SUBROUTINE imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,e
                     y2 = enk2p - enk1p - hw(ie)
                     diracAvg = diracDelta(x1,y1,x2,y2,fwhm)  ! (1/eV)
                     IF (diracAvg == 0.) CYCLE
-                    ! in original version
-                    ! EEi = hw(ie)**2 / (Eab**4 + (8.D0*fwhm)**4)
-                    ! changed to
-                    ! EEi = 1/(hw(ie) * Eab)
-                    ss(ie) = ss(ie) + dk/2 * p2df * diracAvg / (hw(ie) * Eab)  ! (1/Angstroms**3 1/eV**3)
+
+                    IF (hw(ie) .le. ptol) THEN
+                        ss(ie) = ss(ie) + dk/2 * p2df * diracAvg / (1.D-3 * Eab)
+                    ELSE
+                        ss(ie) = ss(ie) + dk/2 * p2df * diracAvg / (hw(ie) * Eab)  ! (1/Angstroms**3 1/eV**3)
+                    END IF
                  END DO
                  
               END DO
@@ -1326,7 +1327,12 @@ eps0(:) = ebg
                     diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm)  ! (1/eV)
                     IF(diracAvg == 0.) CYCLE
 
-                    ss(ie) = ss(ie) + dk/(2*pi) * p2df * diracAvg / ( hw(ie) * Eab )   ! eV**(-3) * Angstroms**(-3)
+                    IF (hw(ie) .le. ptol) THEN
+                        ss(ie) = ss(ie) + dk/(2*pi) * p2df * diracAvg / ( 1.D-3 * Eab )
+                    ELSE
+                        ss(ie) = ss(ie) + dk/(2*pi) * p2df * diracAvg / ( hw(ie) * Eab )   ! eV**(-3) * Angstroms**(-3)
+                    END IF
+
                  END DO
 
               END DO

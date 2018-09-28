@@ -371,7 +371,7 @@ PROGRAM cntabsorpt
   nhex=nHexagon(n,m)
 
 ! choose the correct number of k-points
-  dk = laser_fwhm/hbarvfermi
+  dk = laser_fwhm/(4*hbarvfermi)
   nk1 = INT(2*pi/(trLength(n,m)*dk))
 
   IF (nk1 > nk) THEN
@@ -631,7 +631,7 @@ PROGRAM cntabsorpt
 ! ======================= Electron energy loss spectra  =================
 ! eels spectra
   WRITE (*,*) '--------------------------------------------------------'
-  CALL EELS(nhw_laser,eps1a1,eps2a,eelspec)
+  CALL EELS(nhw_laser,eps1a,eps2a,eelspec)
 
 ! plot eels(hw) *******************************
   OPEN(unit=22,file='tube.eels.xyy.'//outfile)
@@ -794,91 +794,93 @@ PROGRAM cntabsorpt
 
   DEALLOCATE(ss0,difFermiDist,matrElementSq,diracAvgFunc)
 
-  !check convergence of the result according to dk chosen
-  DEALLOCATE(rka)
-  DEALLOCATE(Enk)
-  DEALLOCATE(Znk)
-  DEALLOCATE(cDipole)
-
-  ALLOCATE(eps2aii(10,nhw_laser))
-
-  kCoef = (/10., 8., 6., 4., 2., 1., 0.8, 0.5, 0.2, 0.1/)
-
-  DO i=1,10
-
-      dk = laser_fwhm/hbarvfermi*1.D0/kCoef(i)
-      nk = INT(pi/(trLength(n,m)*dk))
-
-      PRINT*, 'Coef = ', kCoef(i), 'Number of k points, nk = ', nk
-
-  ALLOCATE(rka(nk))
-  ALLOCATE(Enk(2,nhex,nk))
-  ALLOCATE(Znk(2,2,nhex,nk))
-  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
-
-! define k point array (1/A): -pi/T .. pi/T
-  rkmax=pi/trLength(n,m)
-  rkmin=-rkmax
-  CALL linArray(nk,rkmin,rkmax,rka)
-  dk=rka(2)-rka(1)
-
-! compute energy bands En(k) (eV)
-  DO mu=1,nhex
-     DO k=1,nk
-        rk=rka(k)
-        CALL etbTubeBand(n,m,mu,rk,En,Zk)
-        DO ii=1,2
-           Enk(ii,mu,k)=En(ii)
-           Znk(ii,1:2,mu,k)=Zk(ii,1:2)
-        END DO
-     END DO
-  END DO
-
-  DO n1 = 1,2
-    DO n2 = 1,2
-        DO mu1 = 1, nhex
-            DO mu2 = 1, nhex
-
-                DO k = 1, nk
-                rk = rka(k)
-
-                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
-
-                END DO
-
-            END DO
-         END DO
-     END DO
-  END DO
-
-  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)
-
-  eps2aii(i,1:nhw_laser) = eps2a(nhw_laser)
-
-  DEALLOCATE(rka)
-  DEALLOCATE(Enk)
-  DEALLOCATE(Znk)
-  DEALLOCATE(cDipole)
-
-  END DO
-
-  DO i=1,9
-    divergence(i) = 0.0
-    DO ie = 1, nhw_laser
-        divergence(i) = divergence(i) + (eps2aii(i+1,ie) - eps2aii(i,ie))**2
-    END DO
-    divergence(i) = SQRT(divergence(i))
-  END DO
-
-  OPEN(unit=22,file='tube.divergence.xyy.'//outfile)
-  WRITE(22,1001) kCoef(1), 0.D0, 1.D0/kCoef(1)
-  DO i=1,9
-     WRITE(22,1001) kCoef(i+1), divergence(i), 1.D0/kCoef(i+1)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'divergence in file tube.divergence.xyy.'//outfile
-
-  DEALLOCATE(eps2aii)
+! ---------------------------------------------------------
+! check convergence of the result according to dk chosen
+! ---------------------------------------------------------
+!  DEALLOCATE(rka)
+!  DEALLOCATE(Enk)
+!  DEALLOCATE(Znk)
+!  DEALLOCATE(cDipole)
+!
+!  ALLOCATE(eps2aii(10,nhw_laser))
+!
+!  kCoef = (/10., 8., 6., 4., 2., 1., 0.8, 0.5, 0.2, 0.1/)
+!
+!  DO i=1,10
+!
+!      dk = laser_fwhm/hbarvfermi*1.D0/kCoef(i)
+!      nk = INT(pi/(trLength(n,m)*dk))
+!
+!      PRINT*, 'Coef = ', kCoef(i), 'Number of k points, nk = ', nk
+!
+!  ALLOCATE(rka(nk))
+!  ALLOCATE(Enk(2,nhex,nk))
+!  ALLOCATE(Znk(2,2,nhex,nk))
+!  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
+!
+!! define k point array (1/A): -pi/T .. pi/T
+!  rkmax=pi/trLength(n,m)
+!  rkmin=-rkmax
+!  CALL linArray(nk,rkmin,rkmax,rka)
+!  dk=rka(2)-rka(1)
+!
+!! compute energy bands En(k) (eV)
+!  DO mu=1,nhex
+!     DO k=1,nk
+!        rk=rka(k)
+!        CALL etbTubeBand(n,m,mu,rk,En,Zk)
+!        DO ii=1,2
+!           Enk(ii,mu,k)=En(ii)
+!           Znk(ii,1:2,mu,k)=Zk(ii,1:2)
+!        END DO
+!     END DO
+!  END DO
+!
+!  DO n1 = 1,2
+!    DO n2 = 1,2
+!        DO mu1 = 1, nhex
+!            DO mu2 = 1, nhex
+!
+!                DO k = 1, nk
+!                rk = rka(k)
+!
+!                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
+!
+!                END DO
+!
+!            END DO
+!         END DO
+!     END DO
+!  END DO
+!
+!  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)
+!
+!  eps2aii(i,1:nhw_laser) = eps2a(1:nhw_laser)
+!
+!  DEALLOCATE(rka)
+!  DEALLOCATE(Enk)
+!  DEALLOCATE(Znk)
+!  DEALLOCATE(cDipole)
+!
+!  END DO
+!
+!  DO i=1,9
+!    divergence(i) = 0.0
+!    DO ie = 1, nhw_laser
+!        divergence(i) = divergence(i) + (eps2aii(i+1,ie) - eps2aii(i,ie))**2
+!    END DO
+!    divergence(i) = SQRT(divergence(i))
+!  END DO
+!
+!  OPEN(unit=22,file='tube.divergence.xyy.'//outfile)
+!  WRITE(22,1001) kCoef(1), 0.D0, 1.D0/kCoef(1)
+!  DO i=1,9
+!     WRITE(22,1001) kCoef(i+1), divergence(i), 1.D0/kCoef(i+1)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'divergence in file tube.divergence.xyy.'//outfile
+!
+!  DEALLOCATE(eps2aii)
 
 ! ============= part of code to check the calculations ================================
 ! ************************************* END *******************************************
