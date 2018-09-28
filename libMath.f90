@@ -385,10 +385,13 @@ REAL(8) FUNCTION diracDelta(x1,y1,x2,y2,fwhm)
   dk = x2-x1
   bb = y2 - y1
 
-  a1 = y1 / fwhm
-  a2 = y2 / fwhm
-
-  diracDelta = (DATAN(DBLE(a2)) - DATAN(DBLE(a1))) / (pi*bb)
+  IF (ABS(bb/dk) < tol) THEN
+    diracDelta = (fwhm/(y2**2 + fwhm**2) + fwhm/(y1**2 + fwhm**2))/(2*pi)
+  ELSE
+    a1 = y1 / fwhm
+    a2 = y2 / fwhm
+    diracDelta = (DATAN(DBLE(a2)) - DATAN(DBLE(a1))) / (pi*bb)
+  END IF
 
   RETURN
 
@@ -948,15 +951,20 @@ REAL(8) FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
 
   REAL(8), INTENT(in)    :: x1, x2, y1, y2, fwhm
   REAL(8), PARAMETER     :: pi  = 3.141592654D0
+  REAL(8), PARAMETER     :: tol = 1.D-7
 
   REAL(8)                :: dk, bb, a1, a2
 
   dk = x2-x1
   bb = y2 - y1
 
-  a1 = y1**2 + fwhm**2
-  a2 = y2**2 + fwhm**2
-  diracDelta_eps1 = DLOG(ABS(a2)/ABS(a1)) / (2*bb)
+  IF (ABS(bb/dk) < tol) THEN
+      diracDelta_eps1 = (y2/(y2**2 + fwhm**2) + y1/(y1**2 + fwhm**2))/2
+  ELSE
+      a1 = y1**2 + fwhm**2
+      a2 = y2**2 + fwhm**2
+      diracDelta_eps1 = DLOG(ABS(a2)/ABS(a1)) / (2*bb)
+  END IF
 
   RETURN
 

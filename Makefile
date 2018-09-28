@@ -24,7 +24,7 @@ TUBE = libswntElec.o libswntPhon.o libswntOpt.f90
 
 elopph: $(OBJS) $(MODS) $(TUBE)
 	$(FC) $(OBJS) $(MODS) $(TUBE) \
-	elopphtube.f90 -o elopphtube.out $(FLINKER)
+	cntabsorpt.f90 -o cntabsorpt.out $(FLINKER)
 
 clean:
 	rm -f *.a *.exe *.mod *.o *.out *~ *.amk *.default

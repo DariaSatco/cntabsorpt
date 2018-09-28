@@ -1,17 +1,18 @@
 !*******************************************************************************
 !*******************************************************************************
-! Project      : elopphtube.f90
+! Project      : cntabsorpt.f90
 !===============================================================================
 ! Purpose      :
-! Electronic dispersion, phonon dispersion, and absorption spectra of SWNTs
+! Electronic dispersion, dielectric properties and absorption spectra of SWNTs
 !-------------------------------------------------------------------------------
 ! Method       :
 ! [ Electron ]   Third nearest-neighbor ETB model (but w/o sigma band effect)
-! [ Optic    ]   Absorption coeff. from imaginary part of dielectric function
-! [ Phonon   ]   Force constant model
+! [ Optic    ]   Dielectric functions and absorption acording to Kubo formula
 !-------------------------------------------------------------------------------
-! Author       : ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
-! Latest Vers. : 2013.12.18
+! Authors      :
+! - ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
+! - Daria Satco  (dasha.shatco@gmail.com)
+! Latest Vers. : 2018.09.30
 !-------------------------------------------------------------------------------
 ! Required files :
 ! - globvar         -- global variables
@@ -20,21 +21,20 @@
 ! - libMath.f90     -- mathematical libraries
 ! - libswntElec.f90 -- electronic/excitonic states
 ! - libswntOpt.f90  -- optical matrix element
-! - libswntPhon.f90 -- phonon dispersion
 !*******************************************************************************
 !*******************************************************************************
-PROGRAM elopphtube
+PROGRAM cntabsorpt
 !===============================================================================
   USE globvar
   IMPLICIT NONE
   
 ! parameters
-  INTEGER, SAVE, DIMENSION(0:4) :: nvecs = (/ 1, 3, 6, 3, 6 /)
   REAL(8), PARAMETER     :: pi    = 3.14159265358979D0
   REAL(8), PARAMETER     :: hbar  = 6.582D-4 !(eV-ps)
   REAL(8), PARAMETER     :: h     = 4.13D-15 !(eV-s)
   REAL(8), PARAMETER     :: e2    = 14.4     !(eV-A)
   REAL(8), PARAMETER     :: hbarc = 1.97D-5  !(eV cm)
+  REAL(8), PARAMETER     :: hbarvfermi = 6.582119 !(eV-A) !hbar*vfermi, vfermi = 10**6 m/s
 !-------------------------------------------------------------------------------
 ! variables for calling tube structure function
   INTEGER                :: n, m, nHexagon
@@ -52,8 +52,8 @@ PROGRAM elopphtube
   REAL(8)                :: Efermi
 !-------------------------------------------------------------------------------
 ! variables for electronic states
-  INTEGER                :: iEii
-  REAL(8)                :: rkmin, rkmax, rkii, dk, rk, de, eii
+  REAL(8)                :: rkmin, rkmax, dk, rk, de, eii
+  INTEGER                :: nk1
   REAL(8), ALLOCATABLE   :: rka(:)           !(nk)
   REAL(8), ALLOCATABLE   :: Enk(:,:,:)       !(2,nhex,nk)
   COMPLEX(8), ALLOCATABLE:: Znk(:,:,:,:)
@@ -65,15 +65,6 @@ PROGRAM elopphtube
   REAL(8), ALLOCATABLE   :: eEarray(:)       !(nee)
   REAL(8), ALLOCATABLE   :: eDOS(:)          !(nee)
 !-------------------------------------------------------------------------------
-! variables for phonon dispersion
-  INTEGER                :: iq
-  REAL(8)                :: qmin, qmax, dq, q
-  REAL(8), ALLOCATABLE   :: qa(:)            !(nq)
-  REAL(8), DIMENSION(6)  :: Em               !(unit eV)
-  REAL(8), ALLOCATABLE   :: Emq(:,:,:)       !(6,nhex,nq)
-  REAL(8), ALLOCATABLE   :: pEarray(:)       !(nep)
-  REAL(8), ALLOCATABLE   :: pDOS(:)          !(nep)      
-!-------------------------------------------------------------------------------
 ! variables for optical properties
   INTEGER                 :: mmu
   INTEGER                 :: n1, mu1, n2, mu2
@@ -81,7 +72,7 @@ PROGRAM elopphtube
   REAL(8), ALLOCATABLE    :: Px2k(:,:)       !(nk,nhex)
   REAL(8), ALLOCATABLE    :: Pz2k(:,:)       !(nk,nhex)
  
-  REAL(8),DIMENSION(3) :: epol
+  REAL(8)                 :: epol(3)
 
   REAL(8), ALLOCATABLE    :: hw_laser(:)     !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps2a(:)        !(nhw_laser)
@@ -106,8 +97,11 @@ PROGRAM elopphtube
   REAL(8), ALLOCATABLE   :: difFermiDist(:,:,:,:)
   REAL(8), ALLOCATABLE   :: matrElementSq(:,:,:,:)
   REAL(8), ALLOCATABLE   :: diracAvgFunc(:,:,:,:)
-  REAL(8), ALLOCATABLE   :: j1j2(:,:)
   INTEGER                :: prefer_position(4), max_position(4), min_position(4)
+
+  REAL                   :: divergence(9), kCoef(10)
+  INTEGER                :: i
+  REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
 !----------------------------------------------------------------------
 !                              Main Menu
 !----------------------------------------------------------------------
@@ -193,30 +187,24 @@ PROGRAM elopphtube
      n = 11
      m = 0
      
+     nk      = 100
+
      doping  = 0.D0
+     Efermi  = 0.0D0
      
-     nk      = 81
-     nee     = 501                                 
-     emine   = -10.D0
-     emaxe   = 15.D0
-     
-     nq      = 81
-     nep     = 501
-     eminp   =-.01D0
-     emaxp   = .21D0
-                    
-     iEii    = 2
-     
-     laser_theta = 0.D0
      refrac      = 1.3D0
-     
+     ebg         = 2.4D0
+
      nhw_laser   = 501
      epmin       = .5D0
      epmax       = 5.D0
      laser_fwhm  =.15D0
+
+     nee     = 501                                 
+     emine   = -10.D0
+     emaxe   = 15.D0
+     
      laser_theta = 0.D0
-     ebg         = 2.4D0
-     Efermi      = 0.0D0
           
   END IF
       
@@ -231,19 +219,16 @@ PROGRAM elopphtube
      READ (22,*) Tempr
      READ (22,*) n,m
      READ (22,*) nk
-     READ (22,*) nq
      READ (22,*) doping
-     READ (22,*) nt
-     READ (22,*) iEii
+     READ (22,*) Efermi
      READ (22,*) refrac
+     READ (22,*) ebg
      READ (22,*) nhw_laser
      READ (22,*) epmin,epmax
      READ (22,*) laser_fwhm
      READ (22,*) nee,emine,emaxe
-     READ (22,*) nep,eminp,emaxp
      READ (22,*) laser_theta
-     READ (22,*) ebg
-     READ (22,*) Efermi
+
      CLOSE(unit=22)
       
   END IF
@@ -263,8 +248,6 @@ PROGRAM elopphtube
   WRITE (*,*) '(5)  Refractive index               :',refrac
   WRITE (*,*) '(6)  Background dielectric permittivity:', ebg
   WRITE (*,*) '-----------------------------------------------------'
-  WRITE (*,*) '(7)  Index of transition energies   :',iEii
-  WRITE (*,*) '-----------------------------------------------------'      
   WRITE (*,*) '(14) Number of laser photon energies:',nhw_laser
   WRITE (*,*) '(15) Laser photon energy range (eV) :',epmin,epmax
   WRITE (*,*) '(16) Laser linewidth (eV)           :',laser_fwhm
@@ -274,10 +257,6 @@ PROGRAM elopphtube
   WRITE (*,*) '(19) Electron DOS energies, nee     :',nee
   WRITE (*,*) '(20) Electron DOS energy range (eV) :',emine,emaxe
   WRITE (*,*) '-----------------------------------------------------' 
-  WRITE (*,*) '(21) Phonon q points, nq            :',nq      
-  WRITE (*,*) '(22) Phonon DOS energies, nep       :',nep
-  WRITE (*,*) '(23) Phonon DOS energy range (eV)   :',eminp,emaxp
-  WRITE (*,*) '-----------------------------------------------------'         
   WRITE (*,*) 'Select an item to edit or enter 0 to continue:'
   iedit = 0
   IF (iprofile /= 1) READ (*,*) iedit
@@ -292,18 +271,16 @@ PROGRAM elopphtube
   IF (iedit == 4)  READ (*,*) Efermi
   IF (iedit == 5)  READ (*,*) refrac
   IF (iedit == 6)  READ (*,*) ebg
-  IF (iedit == 7)  READ (*,*) iEii
-  IF (iedit == 11) READ (*,*) laser_theta  
+
   IF (iedit == 14) READ (*,*) nhw_laser
   IF (iedit == 15) READ (*,*) epmin,epmax
   IF (iedit == 16) READ (*,*) laser_fwhm
   IF (iedit == 17) READ (*,*) laser_theta  
+
   IF (iedit == 18) READ (*,*) nk
   IF (iedit == 19) READ (*,*) nee
   IF (iedit == 20) READ (*,*) emine,emaxe        
-  IF (iedit == 21) READ (*,*) nq
-  IF (iedit == 22) READ (*,*) nep
-  IF (iedit == 23) READ (*,*) eminp,emaxp        
+
   GOTO 2
 3 CONTINUE
   
@@ -322,19 +299,16 @@ PROGRAM elopphtube
     WRITE (22,*) Tempr
     WRITE (22,*) n,m
     WRITE (22,*) nk
-    WRITE (22,*) nq
     WRITE (22,*) doping
-    WRITE (22,*) nt
-    WRITE (22,*) iEii
-    WRITE (22,*) refrac        
+    WRITE (22,*) Efermi
+    WRITE (22,*) refrac
+    WRITE (22,*) ebg
     WRITE (22,*) nhw_laser
     WRITE (22,*) epmin,epmax
     WRITE (22,*) laser_fwhm
     WRITE (22,*) nee,emine,emaxe
-    WRITE (22,*) nep,eminp,emaxp
     WRITE (22,*) laser_theta
-    WRITE (22,*) ebg
-    WRITE (22,*) Efermi
+
     CLOSE(unit=22)
 
 !----------------------------------------------------------------------
@@ -366,10 +340,7 @@ PROGRAM elopphtube
     WRITE (22,*) 'Electron DOS energies, nee     :',nee
     WRITE (22,*) 'Electron DOS energy range (eV) :',emine,emaxe
     WRITE (22,*) '----------------------------------------------------'
-    WRITE (22,*) 'Phonon q points, nq            :',nq
-    WRITE (22,*) 'Phonon DOS energies, nep       :',nep
-    WRITE (22,*) 'Phonon DOS energy range (eV)   :',eminp,emaxp
-    WRITE (22,*) '----------------------------------------------------'    
+
     CLOSE(unit=22)
 
 !----------------------------------------------------------------------
@@ -386,6 +357,15 @@ PROGRAM elopphtube
     
 ! allocate storage for energy bands
   nhex=nHexagon(n,m)
+
+! choose the correct number of k-points
+  dk = laser_fwhm/hbarvfermi
+  nk1 = INT(pi/(trLength(n,m)*dk))
+  IF (nk1 > nk) THEN
+    nk = nk1
+    PRINT*, 'Number of k points was changed, nk = ', nk
+  END IF
+
   ALLOCATE(rka(nk))
   ALLOCATE(Enk(2,nhex,nk))
   ALLOCATE(Znk(2,2,nhex,nk))
@@ -407,24 +387,6 @@ PROGRAM elopphtube
         END DO
      END DO
   END DO
-  
-! Optical ii transitions
-
-!  ALLOCATE(EiiOpt(iEii), rkiiOpt(iEii))
-!  DO ii = 1,iEii
-!     CALL etbTubeEii(n,m,ii,rkii,eii,ierr)
-!     EiiOpt(ii)  = eii
-!     rkiiOpt(ii) = rkii
-!  END DO
-!
-!  OPEN(unit=22,file='tube.kii.xyy.'//outfile)
-!  WRITE(22,1002) rkiiOpt(iEii)/rka(nk), EiiOpt(iEii)
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'kii position in tube.kii.xyy.'//outfile
-!
-!  DEALLOCATE(EiiOpt, rkiiOpt)
-
-! Write electronic band structure
 
   OPEN(unit=22,file='tube.Enk.xyy.'//outfile)
   DO k = 1, nk
@@ -733,65 +695,6 @@ PROGRAM elopphtube
   WRITE(*,*) 'imaginary part of interband conductivity in tube.sigm2_inter.xyy.'//outfile
 
 
-!----------------------------------------------------------------------
-!               nanotube phonon dispersion relations (eV)
-!----------------------------------------------------------------------
-!  WRITE (*,*) '====================================================='
-!  WRITE (*,*) '..Phonon dispersion relations'
-!
-!! allocate storage for phonon dispersion relations
-!  ALLOCATE(qa(nq))
-!  ALLOCATE(Emq(6,nhex,nq))
-!
-!! define q point array (1/A)
-!  qmax = pi/trLength(n,m)
-!  qmin = -qmax
-!  CALL linArray(nq,qmin,qmax,qa)
-!  dq = qa(2) - qa(1)
-!
-!! calculate phonon dispersion relations Em(q) (eV)
-!  DO mu = 1, nhex
-!     DO iq = 1, nq
-!        q = qa(iq)
-!        CALL fcTubeEm(n,m,mu,q,Em)
-!        DO ii = 1,6
-!           Emq(ii,mu,iq) = Em(ii)
-!        END DO
-!     END DO
-!  END DO
-!
-!  OPEN(unit=22,file='tube.Emq.xyy.'//outfile)
-!  DO iq = 1, nq
-!     WRITE (22,1001) qa(iq)/qmax,((Emq(ii,mu,iq),ii=1,6),mu=1,nhex)
-!  END DO
-!  CLOSE(unit=22)
-!  WRITE (*,*) 'phonon dispersion in tube.Emq.xyy.'//outfile
-
-!----------------------------------------------------------------------
-!              phonon density of states (states/atom/eV)
-!----------------------------------------------------------------------
-!  WRITE (*,*) '====================================================='
-!  WRITE (*,*) '..phonon density of states'
-!  WRITE (*,*) '..number of energies:',nep
-!
-!  ALLOCATE(pEarray(nep))
-!  ALLOCATE(pDOS(nep))
-!
-!  CALL linArray(nep,eminp,emaxp,pEarray)
-!  de = pEarray(2) - pEarray(1)
-!
-!  CALL tubePhDOS(n,m,nep,pEarray,pDOS)
-!
-!  OPEN(unit=22,file='tube.phDOS.xyy.'//outfile)
-!  DO ie = 1, nep
-!     WRITE(22,1001) pDOS(ie),pEarray(ie)
-!  END DO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'DOS in tube.phDOS.xyy.'//outfile
-!
-!  DEALLOCATE(pEarray)
-!  DEALLOCATE(pDOS)
-
 ! ============= part of code to check the calculations ================================
 ! *************** please, remove it later *********************************************
 
@@ -816,22 +719,6 @@ PROGRAM elopphtube
 
   OPEN(unit=22,file='tube.test_max.xyy.'//outfile)
   DO k = 1, nk
-!      WRITE(22,1001) rka(k)/rka(nk), matrElementSq(1, 10, 11, k), &
-!      matrElementSq(1, 9, 10, k), &
-!      matrElementSq(1, 11, 12, k), &
-!      matrElementSq(1, 8, 9, k), &
-!      matrElementSq(1, 12, 13, k), &
-!      matrElementSq(1, 7, 8, k)
-!      WRITE(22,1001) rka(k)/rka(nk), matrElementSq(1, 0, 0, k), &
-!      matrElementSq(1, 1, 1, k), &
-!      matrElementSq(1, 2, 2, k), &
-!      matrElementSq(1, 3, 3, k), &
-!      matrElementSq(1, 4, 4, k), &
-!      matrElementSq(1, 5, 5, k), &
-!      matrElementSq(1, 6, 6, k), &
-!      matrElementSq(1, 7, 7, k), &
-!      matrElementSq(1, 8, 8, k), &
-!      matrElementSq(1, 9, 9, k)
      WRITE(22,1001) rka(k)/rka(nk), ss0(max_position(1), max_position(2), max_position(3), k), &
      difFermiDist(max_position(1), max_position(2), max_position(3), k), &
      matrElementSq(max_position(1), max_position(2), max_position(3), k), &
@@ -870,7 +757,6 @@ PROGRAM elopphtube
   CLOSE(unit=22)
   WRITE(*,*) 'test opposite min in file tube.test_min_op.xyy.'//outfile
 
-
   prefer_position(1:4) = (/ 2, 9, 10, 1 /)
 
   OPEN(unit=22,file='tube.test_max_mine.xyy.'//outfile)
@@ -903,9 +789,7 @@ prefer_position(1:4) = (/ 2, 12, 11, 1 /)
  WRITE(*,*) '====================================================='
  WRITE(*,*) 'Fermi level: ', 'from input', Efermi, 'from doping', fermiLevel(n,m,Tempr,doping)
 
-!ALLOCATE(j1j2(nhex,2))
-!CALL getHexagonPosition(n,m,nhex,j1j2)
-!DEALLOCATE(j1j2)
+
 !----------------------------------------------------------------------
 !                          format statements
 !----------------------------------------------------------------------
@@ -915,5 +799,6 @@ prefer_position(1:4) = (/ 2, 12, 11, 1 /)
 1001  FORMAT(901(1X,G13.5))
 1002  FORMAT(2F8.4)
 2002  FORMAT(1A20)
-END PROGRAM elopphtube
+
+END PROGRAM cntabsorpt
 !*******************************************************************************
