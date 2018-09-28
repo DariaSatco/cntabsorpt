@@ -20,7 +20,7 @@ all: clean elopph
 
 MODS = globvar.o
 OBJS = libMath.o swntpar.o swntstruct.o
-TUBE = libswntElec.o libswntPhon.o libswntOpt.f90
+TUBE = libswntElec.o libswntOpt.o
 
 elopph: $(OBJS) $(MODS) $(TUBE)
 	$(FC) $(OBJS) $(MODS) $(TUBE) \

@@ -5,8 +5,10 @@
 ! Purpose      :
 ! Optical properties of a SWNT, i.e. Opt. Matrix Elements and Opt. Absorption
 !-------------------------------------------------------------------------------
-! Author       : ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
-! Latest Vers. : 2013.01.16
+! Authors      :
+! - ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
+! - Daria Satco  (dasha.shatco@gmail.com)
+! Latest Vers. : 2018.09.30
 !-------------------------------------------------------------------------------
 ! Reference(s) :
 ! [1] Physical Properties of Carbon Nanotubes
@@ -29,18 +31,20 @@
 ! - FUNCTION gx (cg, cg1, cg3, cg5, cg7, cg9, cg11, cg13)
 ! - FUNCTION gy (cg, cg1, cg3, cg5, cg7, cg9, cg11, cg13)
 ! - FUNCTION gz (cg, cg1, cg3, cg5, cg7, cg9, cg11, cg13)
-!!!!!!! Daria Satco added !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! mainly used
 ! Lin, M. F., and Kenneth W-K. Shung. "Plasmons and optical properties of carbon nanotubes."
 ! Physical Review B 50.23 (1994): 17744.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! - SUBROUTINE realDielEn(n,m,Tempr,doping,epol,fwhm,ne,hw,eps1)
 ! - SUBROUTINE realDielEn_met2(ne,hw,eps2,eps1)
 ! - SUBROUTINE imagDielEn_met2(ne,hw,eps1,eps2)
-! - SUBROUTINE EELS(ne,hw,eps1,eps2, eelspec)
+! - SUBROUTINE EELS(ne,eps1,eps2,eelspec)
 ! - SUBROUTINE ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
 ! - SUBROUTINE RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1)
 ! - SUBROUTINE ImagDynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
 ! - SUBROUTINE ImagDynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
+! - SUBROUTINE tbDipolXYOrt(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
 !*******************************************************************************
 !*******************************************************************************
 SUBROUTINE polVector(theta,epol)
@@ -153,7 +157,7 @@ SUBROUTINE imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,e
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
 
-  REAL(8), INTENT(in) :: epol(3)
+  REAL(8), INTENT(in)    :: epol(3)
 
   REAL(8), INTENT(in)    :: fwhm
 
@@ -166,7 +170,6 @@ SUBROUTINE imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,e
 
 ! working variables and parameter
 
-  REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
@@ -184,9 +187,9 @@ SUBROUTINE imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,e
 ! for calling some functions
   REAL(8)                :: dk, rkT
   REAL(8)                :: diameter, tubeDiam, area
-  REAL(8)                :: fermiLevel, fermi, Ekk
+  REAL(8)                :: fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
-  REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta
+  REAL(8)                :: y1, y2, diracAvg, Eab, diracDelta
   
   COMPLEX(8)             :: css
 
@@ -692,7 +695,7 @@ SUBROUTINE tbDipolXY2(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
   INTEGER                :: mmu1,mmu2,nn1,nn2
   INTEGER                :: iatom, jatom, nn, ivec, j1, j2, NNatom
   
-  REAL(8)    rkk,phi, phi1, phi2
+  REAL(8)                :: rkk,phi
       
 ! check input for errors
   nhex=nHexagon(n,m)
@@ -1194,7 +1197,6 @@ SUBROUTINE realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fwhm,ne,
 
 ! working variables and parameter
 
-  REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
@@ -1214,9 +1216,9 @@ SUBROUTINE realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fwhm,ne,
 ! for calling some functions
   REAL(8)                :: dk, rkT
   REAL(8)                :: diameter, tubeDiam, area
-  REAL(8)                :: fermiLevel, fermi, Ekk
+  REAL(8)                :: fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
-  REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
+  REAL(8)                :: y1, y2, diracAvg, Eab, diracDelta_eps1
 
   COMPLEX(8)             :: css
 
@@ -1440,7 +1442,7 @@ END SUBROUTINE imagDielEn_met2
 !*******************************************************************************
 !*******************************************************************************
 
-SUBROUTINE EELS(ne,hw,eps1,eps2, eelspec)
+SUBROUTINE EELS(ne,eps1,eps2,eelspec)
 !===============================================================================
 ! Compute the imaginary part of the dielectric function as a function
 ! of probe photon energy
@@ -1448,7 +1450,6 @@ SUBROUTINE EELS(ne,hw,eps1,eps2, eelspec)
 !-------------------------------------------------------------------------------
 ! Input        :
 !  ne            number of probe photon energies
-!  hw(ne)        array of probe photon energies (eV)
 !  eps1(ne)      real part of dielectric function (none)
 !  eps2(ne)      imaginary part of dielectric function (none)
 ! Output       :
@@ -1459,7 +1460,6 @@ SUBROUTINE EELS(ne,hw,eps1,eps2, eelspec)
 
   ! input variables
   INTEGER, INTENT(in)    :: ne
-  REAL(8), INTENT(in)    :: hw(ne)
   REAL(8), INTENT(in)    :: eps1(ne)
   REAL(8),  INTENT(in)   :: eps2(ne)
 
@@ -1529,7 +1529,6 @@ SUBROUTINE RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwh
 
 ! working variables and parameter
 
-  REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
@@ -1547,10 +1546,10 @@ SUBROUTINE RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwh
 
 ! for calling some functions
   REAL(8)                :: dk, rkT
-  REAL(8)                :: diameter, tubeDiam, area
-  REAL(8)                :: fermiLevel, fermi, Ekk
+  REAL(8)                :: diameter, tubeDiam
+  REAL(8)                :: fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
-  REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta
+  REAL(8)                :: y1, y2, diracAvg, Eab, diracDelta
 
   COMPLEX(8)             :: css
 
@@ -1709,7 +1708,6 @@ SUBROUTINE ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwh
 
 ! working variables and parameter
 
-  REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
@@ -1727,10 +1725,10 @@ SUBROUTINE ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwh
 
 ! for calling some functions
   REAL(8)                :: dk, rkT
-  REAL(8)                :: diameter, tubeDiam, area
-  REAL(8)                :: fermiLevel, fermi, Ekk
+  REAL(8)                :: diameter, tubeDiam
+  REAL(8)                :: fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
-  REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
+  REAL(8)                :: y1, y2, diracAvg, Eab, diracDelta_eps1
 
   COMPLEX(8)             :: css
 
@@ -1928,7 +1926,6 @@ SUBROUTINE ImagDynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epo
 
 ! working variables and parameter
 
-  REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
@@ -1946,10 +1943,10 @@ SUBROUTINE ImagDynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epo
 
 ! for calling some functions
   REAL(8)                :: dk, rkT
-  REAL(8)                :: diameter, tubeDiam, area
-  REAL(8)                :: fermiLevel, fermi, Ekk
+  REAL(8)                :: diameter, tubeDiam
+  REAL(8)                :: fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
-  REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
+  REAL(8)                :: y1, y2, diracAvg, Eab, diracDelta_eps1
 
   COMPLEX(8)             :: css
 
@@ -2114,7 +2111,6 @@ SUBROUTINE ImagDynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epo
 
 ! working variables and parameter
 
-  REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
@@ -2132,10 +2128,10 @@ SUBROUTINE ImagDynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epo
 
 ! for calling some functions
   REAL(8)                :: dk, rkT
-  REAL(8)                :: diameter, tubeDiam, area
-  REAL(8)                :: fermiLevel, fermi, Ekk
+  REAL(8)                :: diameter, tubeDiam
+  REAL(8)                :: fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
-  REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
+  REAL(8)                :: y1, y2, diracAvg, Eab, diracDelta_eps1
 
 
   COMPLEX(8)             :: css
@@ -2301,7 +2297,6 @@ difFermiDist,matrElementSq,diracAvgFunc)
 ! working variables and parameter
 
   REAL(8)                :: hw0
-  REAL(8)                :: Ek(2)
   REAL(8), SAVE          :: pre
 
 
@@ -2313,17 +2308,15 @@ difFermiDist,matrElementSq,diracAvgFunc)
   REAL(8), PARAMETER     :: h     = 4.13D-15      !(eV-s)
   REAL(8), PARAMETER     :: ptol  =  1.D-15
 
-  INTEGER                :: k, mu, ii, ie
+  INTEGER                :: k, mu, ii
   INTEGER                :: n1, mu1, n2, mu2
-
-  INTEGER                :: max_position(4), min_position(4)
 
 ! for calling some functions
   REAL(8)                :: dk, rkT
-  REAL(8)                :: diameter, tubeDiam, area
-  REAL(8)                :: fermiLevel, fermi, Ekk
+  REAL(8)                :: diameter, tubeDiam
+  REAL(8)                :: fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
-  REAL(8)                :: y1, y2, diracAvg, Eab, EEi, diracDelta_eps1
+  REAL(8)                :: y1, y2, diracAvg, Eab, diracDelta_eps1
 
   COMPLEX(8)             :: css
 
@@ -2394,6 +2387,9 @@ difFermiDist,matrElementSq,diracAvgFunc)
                     enk2p = (Enk(n2,mu2,k  )+Enk(n2,mu2,k+1))/2.D0
                  END IF
 
+! photon energy is fixed, hw = 0 eV
+                 hw0 = 0.0D0
+
 ! energy difference
                  y1 = enk2n - enk1n - hw0
                  y2 = enk2p - enk1p - hw0
@@ -2421,9 +2417,6 @@ difFermiDist,matrElementSq,diracAvgFunc)
                  !IF (ABS(p2df) <= ptol) CYCLE
 
 !**********************************************************
-
-! photon energy is fixed, hw = 0 eV
-                    hw0 = 0.0D0
 
                     diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm) ! (1/eV)
                     !IF(diracAvg == 0.) CYCLE
@@ -2477,7 +2470,7 @@ SUBROUTINE tbDipolXYOrt(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
   REAL(8),    DIMENSION(2)      :: Ek1, Ek2  !(2)
   COMPLEX(8), DIMENSION(2,2)    :: Zk1, Zk2  !(2,2)
 
-  COMPLEX(8)                    :: c1, c2, newc
+  COMPLEX(8)                    :: c1, c2
   REAL(8)                       :: dipole(3)
   INTEGER,ALLOCATABLE           :: j1j2(:,:)
 
@@ -2485,7 +2478,7 @@ SUBROUTINE tbDipolXYOrt(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
   INTEGER                :: mmu1,mmu2,nn1,nn2
   INTEGER                :: iatom, jatom, nn, ivec, j1, j2, NNatom, jj
 
-  REAL(8)    rkk,phi, phi1, phi2, phi1k, phi2k
+  REAL(8)    rkk, phi1, phi2
 
 ! check input for errors
   nhex=nHexagon(n,m)

@@ -5,8 +5,10 @@
 ! Purpose      :
 ! Library for some mathematical utilites (functions and subroutines)
 !-------------------------------------------------------------------------------
-! Author       : ART Nugraha (nugraha@flex.phys.tohoku.ac.jp)
-! Latest Vers. : 2012.10.18
+! Authors      :
+! - ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
+! - Daria Satco  (dasha.shatco@gmail.com)
+! Latest Vers. : 2018.09.30
 !-------------------------------------------------------------------------------
 ! Reference(s) :
 ! Numerical Recipes in Fortran
@@ -30,7 +32,8 @@
 ! - SUBROUTINE ode2(vector,method,nvar,t1,t2,eps,h1,derivs,maxstp,nstp,hnex)
 ! - SUBROUTINE rkqs(y,dvdt,n,x,htry,eps,yscal,hdid,hnext,derivs)
 ! - SUBROUTINE rkck(y,dvdt,n,x,h,yout,yerr,derivs)
-
+!!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! - FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
 !*******************************************************************************
 !*******************************************************************************
 INTEGER FUNCTION igcd(n1,n2)
@@ -382,7 +385,7 @@ REAL(8) FUNCTION diracDelta(x1,y1,x2,y2,fwhm)
       
   REAL(8)                :: dk, bb, a1, a2
 
-  dk = x2-x1
+  dk = x2 - x1
   bb = y2 - y1
 
   IF (ABS(bb/dk) < tol) THEN
@@ -955,7 +958,7 @@ REAL(8) FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
 
   REAL(8)                :: dk, bb, a1, a2
 
-  dk = x2-x1
+  dk = x2 - x1
   bb = y2 - y1
 
   IF (ABS(bb/dk) < tol) THEN
@@ -969,5 +972,5 @@ REAL(8) FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
   RETURN
 
 END FUNCTION diracDelta_eps1
-
+!*******************************************************************
 !*******************************************************************

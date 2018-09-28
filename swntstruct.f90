@@ -5,8 +5,10 @@
 ! Purpose      :
 ! Library to generate nanotube structures and related vector operations
 !-------------------------------------------------------------------------------
-! Author       : ART Nugraha (nugraha@flex.phys.tohoku.ac.jp)
-! Latest Vers. : 2012.11.05
+! Authors      :
+! - ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
+! - Daria Satco  (dasha.shatco@gmail.com)
+! Latest Vers. : 2018.09.30
 !-------------------------------------------------------------------------------
 ! Reference(s) :
 ! Physical Properties of Carbon Nanotubes
@@ -36,7 +38,7 @@
 ! - SUBROUTINE sqmatrix(n,m,iatom,ivec,nn,q,mu,Sq)
 ! - SUBROUTINE sjmatrix(n,m,iatom,ivec,nn,Sj)
 ! - SUBROUTINE reducedCutLine
-!!!!!!! Daria Satco added !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! - SUBROUTINE getHexagonPosition(n,m,nhex,j1j2)
 !*******************************************************************************
 !*******************************************************************************
