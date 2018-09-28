@@ -20,7 +20,7 @@
 ! - tubestruct.f90  -- nanotube structure libraries
 ! - libMath.f90     -- mathematical libraries
 ! - libswntElec.f90 -- electronic/excitonic states
-! - libswntOpt.f90  -- optical matrix element
+! - libswntOpt.f90  -- optical matrix element, dielectric function, conductivity
 !*******************************************************************************
 !*******************************************************************************
 PROGRAM cntabsorpt
@@ -738,16 +738,6 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'test max in file tube.test_max.xyy.'//outfile
 
-  OPEN(unit=22,file='tube.test_max_op.xyy.'//outfile)
-  DO k = 1, nk
-     WRITE(22,1001) rka(k)/rka(nk), ss0(max_position(1), max_position(3), max_position(2), k), &
-     difFermiDist(max_position(1), max_position(3), max_position(2), k), &
-     matrElementSq(max_position(1), max_position(3), max_position(2), k), &
-     diracAvgFunc(max_position(1), max_position(3), max_position(2), k)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'test opposite max in file tube.test_max_op.xyy.'//outfile
-
   OPEN(unit=22,file='tube.test_min.xyy.'//outfile)
   DO k = 1, nk
      WRITE(22,1001) rka(k)/rka(nk), ss0(min_position(1), min_position(2), min_position(3), k), &
@@ -757,40 +747,6 @@ PROGRAM cntabsorpt
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'test min in file tube.test_min.xyy.'//outfile
-
-  OPEN(unit=22,file='tube.test_min_op.xyy.'//outfile)
-  DO k = 1, nk
-     WRITE(22,1001) rka(k)/rka(nk), ss0(min_position(1), min_position(3), min_position(2), k), &
-     difFermiDist(min_position(1), min_position(3), min_position(2), k), &
-     matrElementSq(min_position(1), min_position(3), min_position(2), k), &
-     diracAvgFunc(min_position(1), min_position(3), min_position(2), k)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'test opposite min in file tube.test_min_op.xyy.'//outfile
-
-  prefer_position(1:4) = (/ 2, 9, 10, 1 /)
-
-  OPEN(unit=22,file='tube.test_max_mine.xyy.'//outfile)
-  DO k = 1, nk
-     WRITE(22,1001) rka(k)/rka(nk), ss0(prefer_position(1), prefer_position(2), prefer_position(3), k), &
-     difFermiDist(prefer_position(1), prefer_position(2), prefer_position(3), k), &
-     matrElementSq(prefer_position(1), prefer_position(2), prefer_position(3), k), &
-     diracAvgFunc(prefer_position(1), prefer_position(2), prefer_position(3), k)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'test max in file tube.test_max_mine.xyy.'//outfile
-
-  prefer_position(1:4) = (/ 2, 12, 11, 1 /)
-
-  OPEN(unit=22,file='tube.test_min_mine.xyy.'//outfile)
-  DO k = 1, nk
-     WRITE(22,1001) rka(k)/rka(nk), ss0(prefer_position(1), prefer_position(2), prefer_position(3), k), &
-     difFermiDist(prefer_position(1), prefer_position(2), prefer_position(3), k), &
-     matrElementSq(prefer_position(1), prefer_position(2), prefer_position(3), k), &
-     diracAvgFunc(prefer_position(1), prefer_position(2), prefer_position(3), k)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'test max in file tube.test_min_mine.xyy.'//outfile
 
   DEALLOCATE(ss0,difFermiDist,matrElementSq,diracAvgFunc)
 

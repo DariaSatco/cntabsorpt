@@ -1450,9 +1450,8 @@ END SUBROUTINE imagDielEn_met2
 
 SUBROUTINE EELS(ne,eps1,eps2,eelspec)
 !===============================================================================
-! Compute the imaginary part of the dielectric function as a function
-! of probe photon energy
-! according to Kramers-Kronig relations for dielectric function
+! Compute the electron energy loss spectra
+!  eels ~ Im(-1/eps) = eps2 / eps^2
 !-------------------------------------------------------------------------------
 ! Input        :
 !  ne            number of probe photon energies
@@ -1460,7 +1459,6 @@ SUBROUTINE EELS(ne,eps1,eps2,eelspec)
 !  eps2(ne)      imaginary part of dielectric function (none)
 ! Output       :
 !  eels(ne)      eels spectrum (none)
-!  eels ~ Im(-1/eps) = eps2 / eps^2
 !===============================================================================
   IMPLICIT NONE
 
