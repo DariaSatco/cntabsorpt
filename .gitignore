@@ -1,3 +1,7 @@
+/160/*
+/1010/*
+/227/*
+/228/*
 *.out
 *.eps
 *.o
@@ -8,3 +12,25 @@ tube*
 *.png
 *.txt
 *.pdf
+
+# eclipse project file
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+
+# Binaries
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.war
+*.ear
+*.sar
+*.class

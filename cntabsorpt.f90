@@ -88,8 +88,8 @@ PROGRAM cntabsorpt
   COMPLEX(8), ALLOCATABLE :: cDipole(:,:,:,:,:,:) !(3,nk,2,nhex,2,nhex)
 !-------------------------------------------------------------------------------
 ! variables for input and output files 
-  CHARACTER(40)           :: infile, outfile
-  CHARACTER(5)            :: fermistr
+  CHARACTER(40)           :: infile, outfile, path
+  CHARACTER(5)            :: fermistr, thetastr
 
 !temp variables
   REAL(8), ALLOCATABLE   :: plotfuncmaxtest(:), plotfuncmintest(:), kaxis(:)
@@ -246,7 +246,7 @@ PROGRAM cntabsorpt
      WRITE(22,1001) rka(k)/rka(nk),((aimag(Znk(ii,1,mu,k)),ii=1,2),mu=1,nhex)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'electronic En(k) in tube.Znk.xyy.'//outfile
+  WRITE(*,*) 'electronic wavefunctions Zn(k) in tube.Znk.xyy.'//outfile
 
 !----------------------------------------------------------------------
 !            electron density of states (states/atom/eV)
@@ -395,10 +395,17 @@ PROGRAM cntabsorpt
 
 ! unit polarization vectors in complex notation (dimensionless)
   CALL polVector(laser_theta,epol)
-! ======================================================================
-! ========================== permittivity ==============================
-! real part of dielectric permittivity
-! ======================================================================
+
+! ***********************************************************************
+! FERMI LEVEL LOOP
+! ***********************************************************************
+
+  path = './'//TRIM(outfile)//'/'
+! ---------------------------------------------------------------------
+! cycle over fermi level position
+! ---------------------------------------------------------------------
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..begin DO loop over Fermi level in range 0..2.5 eV'
   DO i=1,26
   WRITE (*,*) '--------------------------------------------------------'
 
@@ -406,7 +413,13 @@ PROGRAM cntabsorpt
   WRITE (*,*) '--------------------------------------------------------'
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
+  WRITE (thetastr, 360) INT(laser_theta/10.)
   WRITE (*,*) '--------------------------------------------------------'
+
+! ======================================================================
+! ========================== permittivity ==============================
+! real part of dielectric permittivity
+! ======================================================================
 
   CALL realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
 
@@ -460,12 +473,12 @@ PROGRAM cntabsorpt
   CALL RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1)
 
 ! plot sigm1(hw) ******************************
-  OPEN(unit=22,file='tube.sigm1.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'real part of conductivity in tube.sigm1.xyy.'//outfile
+  WRITE(*,*) 'real part of conductivity in', TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
 
 ! imaginary part
 ! =======================================================================
@@ -486,14 +499,69 @@ PROGRAM cntabsorpt
   CALL Absorption(nhw_laser,eps1a,eps2a,sigm1,sigm2,absorpt)
 
 ! plot absorpt(hw) *******************************
-  OPEN(unit=22,file='/'//outfile//'tube.absorpt.xyy.'//trim(fermistr)//'.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'absorption in '//'/'//outfile//tube.absorpt.xyy.'//trim(fermistr)//'.'//outfile
+  WRITE(*,*) 'absorption in ', TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
 
   END DO
+  WRITE (*,*) '..end of DO loop over Fermi level'
+
+! ***********************************************************************
+! END OF FERMI LEVEL LOOP
+! ***********************************************************************
+
+! ======================================================================
+! ========================== permittivity ==============================
+! real part of dielectric permittivity
+! ======================================================================
+
+  CALL realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
+
+! plot eps1(hw) (Lin's) ************************
+  OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie),eps1a(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
+
+
+  CALL realDielEn_met2(nhw_laser,ebg, hw_laser,eps2a,eps1a1)   !Kramers-Kronig
+
+! plot eps1(hw) (Kramers-Kronig) ****************
+  OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie),eps1a1(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'real part of dielectric function in tube.eps1kk.xyy.'//outfile
+
+! imaginary part of dielectric permittivity
+! =======================================================================
+  WRITE (*,*) '--------------------------------------------------------'
+  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)  !From Lin's paper
+
+! plot eps2(hw) ********************************
+  OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie),eps2a(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
+
+
+  CALL imagDielEn_met2(nhw_laser,hw_laser,eps1a,eps2a1)  !Kramers-Kronig
+
+! plot eps2(hw) (Kramers-Kronig) ***************
+  OPEN(unit=22,file='tube.eps2kk.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie),eps2a1(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
 
 ! =======================================================================
 ! ======================= absorption coefficient ========================
@@ -510,6 +578,7 @@ PROGRAM cntabsorpt
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'alpha(hw) in tube.alpha.xyy.'//outfile
+
 ! =======================================================================
 ! ======================= Electron energy loss spectra  =================
 ! eels spectra
@@ -524,6 +593,7 @@ PROGRAM cntabsorpt
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'eels in tube.eels.xyy.'//outfile
+
 ! =======================================================================
 ! ========================== conductivity ===============================
 ! real part
@@ -576,6 +646,19 @@ PROGRAM cntabsorpt
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of interband conductivity in tube.sigm2_inter.xyy.'//outfile
+
+! =======================================================================
+! ============================ absorption ===============================
+  WRITE (*,*) '--------------------------------------------------------'
+  CALL Absorption(nhw_laser,eps1a,eps2a,sigm1,sigm2,absorpt)
+
+! plot absorpt(hw) *******************************
+  OPEN(unit=22,file='tube.absorpt.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'absorption in tube.sigm2_inter.xyy.'//outfile
 
 
 ! ============= part of code to check the calculations ================================
@@ -725,6 +808,7 @@ PROGRAM cntabsorpt
 1002  FORMAT(2F8.4)
 2002  FORMAT(1A20)
 350   FORMAT(F3.1)
+360   FORMAT(I1)
 
 END PROGRAM cntabsorpt
 !*******************************************************************************
