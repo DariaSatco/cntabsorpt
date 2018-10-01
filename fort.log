@@ -1,0 +1,87 @@
+ Input file name MUST be: tube.param.**** 
+ **** can be up to 20 symbols length string
+ Enter suffix of input data set (1a20):
+ =====================================================
+               Tube classification
+  Chiral indices (n,m) :          10          10
+  Class                : Armchair
+  Metallicity          : Metal-2 (M0)
+  Family (2 n + m)     :           30
+
+  Chiral angle (Radian):   0.52359877559829870     
+
+  Tube diameter (A)    :    13.728089548581442     
+  Unit cell length (A) :    2.4900000095367432     
+  Unit cell hexagons   :           20
+  Unit cell atoms      :           40
+
+ =====================================================
+  Here is the input data:
+ =====================================================
+ Temperature (deg K)            :   300.00000000000000     
+ Chiral indices (n,m)           :          10          10
+ Doping (n-p) per length (1/A)  :   0.0000000000000000     
+ Fermi level                    :   0.0000000000000000     
+ Refractive index               :   1.3000000000000000     
+ Background dielectric permittivity:   1.0000000000000000     
+ -----------------------------------------------------
+ Number of laser photon energies:         501
+ Laser photon energy range (eV) :   9.9999999999999998E-017   6.0000000000000000     
+ Laser linewidth (eV)           :   5.0000000000000010E-002
+ Laser polarization angle (deg) :   90.000000000000000     
+ -----------------------------------------------------
+ Electron k points, nk          :         100
+ Electron DOS energies, nee     :         501
+ Electron DOS energy range (eV) :  -10.000000000000000        15.000000000000000     
+ -----------------------------------------------------
+ =====================================================
+                 begin execution
+ =====================================================
+ ..Electronic bands in ETB model
+ Number of k points was changed, nk =         1328
+ electronic En(k) in tube.Enk.xyy.101012                                  
+ electronic En(k) in tube.Znk.xyy.101012                                  
+ =====================================================
+ ..electron density of states
+ ..number of energies:         501
+ DOS in tube.elecDOS.xyy.101012                                  
+ =====================================================
+ ..Squared optical matrix elements (eV)
+ ..x polarization
+ Px2_dn(k) in tube.Px2k_dn.xyy.101012                                  
+ Px2_up(k) in tube.Px2k_up.xyy.101012                                  
+ ..z polarization
+ Pz2(k) in tube.Pz2k.xyy.101012                                  
+ =====================================================
+ ..Real and Imaginary part of dielectric function
+   absorption coefficient (1/cm), conductivity (e^2/h)
+ ..Number of laser energies :         501
+ ..Laser fwhm linewidth (eV):   5.0000000000000010E-002
+ --------------------------------------------------------
+ real part of dielectric function in tube.eps1.xyy.101012                                  
+ real part of dielectric function in tube.eps1kk.xyy.101012                                  
+ --------------------------------------------------------
+ imaginary part of dielectric function in tube.eps2.xyy.101012                                  
+ imaginary part of dielectric function in tube.eps2kk.xyy.101012                                  
+ --------------------------------------------------------
+ alpha(hw) in tube.alpha.xyy.101012                                  
+ --------------------------------------------------------
+ eels in tube.eels.xyy.101012                                  
+ --------------------------------------------------------
+ real part of conductivity in tube.sigm1.xyy.101012                                  
+ --------------------------------------------------------
+ imaginary part of conductivity in tube.sigm2.xyy.101012                                  
+ --------------------------------------------------------
+ absorption in tube.absorpt.xyy.101012                                  
+ --------------------------------------------------------
+ imaginary part of intraband conductivity in tube.sigm2_intra.xyy.101012                                  
+ imaginary part of interband conductivity in tube.sigm2_inter.xyy.101012                                  
+ =====================================================
+ ..test under integral function
+ maximum at           2          10           9         224
+ minimum at           2           9          10         224
+ test max in file tube.test_max.xyy.101012                                  
+ test min in file tube.test_min.xyy.101012                                  
+ =====================================================
+ Fermi level: from input   0.0000000000000000      from doping  -1.4387369155883789E-002
+ =====================================================

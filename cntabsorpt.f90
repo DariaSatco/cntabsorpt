@@ -42,7 +42,6 @@ PROGRAM cntabsorpt
   REAL(8)                :: fermiLevel
 !-------------------------------------------------------------------------------
 ! calculation parameter input
-  INTEGER                :: iprofile, imenu, ichange, iedit, ierr
   INTEGER                :: k, mu, ii, ie, nee, nq, nep
   INTEGER                :: nhw_laser
   REAL(8)                :: Tempr, rkT, doping, emine, emaxe, eminp, emaxp
@@ -90,6 +89,7 @@ PROGRAM cntabsorpt
 !-------------------------------------------------------------------------------
 ! variables for input and output files 
   CHARACTER(40)           :: infile, outfile
+  CHARACTER(5)            :: fermistr
 
 !temp variables
   REAL(8), ALLOCATABLE   :: plotfuncmaxtest(:), plotfuncmintest(:), kaxis(:)
@@ -102,132 +102,22 @@ PROGRAM cntabsorpt
   REAL                   :: divergence(9), kCoef(10)
   INTEGER                :: i
   REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
-!----------------------------------------------------------------------
-!                              Main Menu
-!----------------------------------------------------------------------
-  iprofile = 0          
-  WRITE (*,*) '====================================================='
-  WRITE (*,*) '          Main Menu for coherent.f90'
-1 WRITE (*,*) '====================================================='
-  WRITE (*,*) 'Select an option:'
-  WRITE (*,*) '(1)  Start with default data set'
-  WRITE (*,*) '(2)  Read and edit an old data set'
-  WRITE (*,*) '(3)  Delete old data set but save log & param files'
-  WRITE (*,*) '(4)  Totally delete old data set'
-  WRITE (*,*) '(5)  Stop'
-  WRITE (*,*) '====================================================='
-  imenu = 1
 
-  IF (iprofile /= 1) READ (*,*) imenu
-  IF (imenu < 1 .OR. imenu > 5 ) GOTO 1
-  IF (imenu == 5) STOP
-  
-!----------------------------------------------------------------------
-!                 menu option: delete an old data set
-!----------------------------------------------------------------------
-  IF (imenu == 3 .OR. imenu == 4) THEN
-     WRITE (*,*) 'Enter suffix of data set to be deleted:'
+!*************************************************************
+!!!!!!!!!!!!!!!!!!!!!! MAIN PROGRAM !!!!!!!!!!!!!!!!!!!!!!!!!!
+!*************************************************************
+
+     WRITE (*,*) 'Input file name MUST be: tube.param.**** '
+     WRITE (*,*) '**** can be up to 20 symbols length string'
+     WRITE (*,*) 'Enter suffix of input data set (1a20):'
      READ  (*,2002) infile
      outfile = infile
-      
-     IF (imenu == 4) THEN      
-        OPEN(unit=22,file='tube.param.'//outfile)
-        CLOSE(unit=22,status='delete')
-      
-        OPEN(unit=22,file='tube.log.'//outfile)
-        CLOSE(unit=22,status='delete')      
-     END IF
-     
-     OPEN(unit=22,file='tube.Enk.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')                                         
-     
-     OPEN(unit=22,file='tube.elecDOS.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')      
-     
-     OPEN(unit=22,file='tube.Px2k_up.xyy.'//outfile)
-     CLOSE(unit=22,status='delete') 
-     
-     OPEN(unit=22,file='tube.Px2k_dn.xyy.'//outfile)
-     CLOSE(unit=22,status='delete') 
-     
-     OPEN(unit=22,file='tube.Pz2k.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')   
-     
-     OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
 
-     OPEN(unit=22,file='tube.eps2kk.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')     
-     
-     OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
-
-     OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
-
-     OPEN(unit=22,file='tube.alpha.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
-
-     OPEN(unit=22,file='tube.absorpt.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
-
-     OPEN(unit=22,file='tube.sigm1.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
-
-     OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
-
-     OPEN(unit=22,file='tube.sigm2_intra.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
-     
-     OPEN(unit=22,file='tube.sigm2_inter.xyy.'//outfile)
-     CLOSE(unit=22,status='delete')
-     
-     GOTO 1
-  END IF
-      
 !----------------------------------------------------------------------
-!                    menu option: default data set
+!                       read data from file
 !----------------------------------------------------------------------
-  IF (imenu == 1) THEN
-     
-     infile  = 'default'
-     outfile = 'default'        
-     
-     Tempr   = 300.D0
-     
-     n = 11
-     m = 0
-     
-     nk      = 100
-
-     doping  = 0.D0
-     Efermi  = 0.0D0
-     
-     refrac      = 1.3D0
-     ebg         = 2.4D0
-
-     nhw_laser   = 501
-     epmin       = .5D0
-     epmax       = 5.D0
-     laser_fwhm  =.15D0
-
-     nee     = 501                                 
-     emine   = -10.D0
-     emaxe   = 15.D0
-     
-     laser_theta = 0.D0
-          
-  END IF
-      
-!----------------------------------------------------------------------
-!              menu option: read and edit old data set
-!----------------------------------------------------------------------
-  IF (imenu == 2) THEN
-     WRITE (*,*) 'Enter suffix of old data set (1a20):'
-     READ  (*,2002) infile
-     
      OPEN(unit=22,file='tube.param.'//infile, status = 'old')
+
      READ (22,*) Tempr
      READ (22,*) n,m
      READ (22,*) nk
@@ -243,85 +133,27 @@ PROGRAM cntabsorpt
 
      CLOSE(unit=22)
       
-  END IF
-      
-  ichange = 0      
-2 WRITE (*,*) '====================================================='
+  WRITE (*,*) '====================================================='
   CALL printTubeClass(n,m,6)
   WRITE (*,*) '====================================================='
   WRITE (*,*) ' Here is the input data:'
   WRITE (*,*) '====================================================='
-  WRITE (*,*) '(0)  OK. Start simulation'
+  WRITE (*,*) 'Temperature (deg K)            :',Tempr
+  WRITE (*,*) 'Chiral indices (n,m)           :',n,m
+  WRITE (*,*) 'Doping (n-p) per length (1/A)  :',doping
+  WRITE (*,*) 'Fermi level                    :',Efermi
+  WRITE (*,*) 'Refractive index               :',refrac
+  WRITE (*,*) 'Background dielectric permittivity:', ebg
   WRITE (*,*) '-----------------------------------------------------'
-  WRITE (*,*) '(1)  Temperature (deg K)            :',Tempr
-  WRITE (*,*) '(2)  Chiral indices (n,m)           :',n,m
-  WRITE (*,*) '(3)  Doping (n-p) per length (1/A)  :',doping
-  WRITE (*,*) '(4)  Fermi level                    :',Efermi
-  WRITE (*,*) '(5)  Refractive index               :',refrac
-  WRITE (*,*) '(6)  Background dielectric permittivity:', ebg
-  WRITE (*,*) '-----------------------------------------------------'
-  WRITE (*,*) '(14) Number of laser photon energies:',nhw_laser
-  WRITE (*,*) '(15) Laser photon energy range (eV) :',epmin,epmax
-  WRITE (*,*) '(16) Laser linewidth (eV)           :',laser_fwhm
-  WRITE (*,*) '(17) Laser polarization angle (deg) :',laser_theta        
+  WRITE (*,*) 'Number of laser photon energies:',nhw_laser
+  WRITE (*,*) 'Laser photon energy range (eV) :',epmin,epmax
+  WRITE (*,*) 'Laser linewidth (eV)           :',laser_fwhm
+  WRITE (*,*) 'Laser polarization angle (deg) :',laser_theta
   WRITE (*,*) '-----------------------------------------------------'      
-  WRITE (*,*) '(18) Electron k points, nk          :',nk
-  WRITE (*,*) '(19) Electron DOS energies, nee     :',nee
-  WRITE (*,*) '(20) Electron DOS energy range (eV) :',emine,emaxe
+  WRITE (*,*) 'Electron k points, nk          :',nk
+  WRITE (*,*) 'Electron DOS energies, nee     :',nee
+  WRITE (*,*) 'Electron DOS energy range (eV) :',emine,emaxe
   WRITE (*,*) '-----------------------------------------------------' 
-  WRITE (*,*) 'Select an item to edit or enter 0 to continue:'
-  iedit = 0
-  IF (iprofile /= 1) READ (*,*) iedit
-  IF (iedit == 0) GOTO 3
-  
-  ichange = 1
-  WRITE(*,*) 'Enter new value(s):'
-  
-  IF (iedit == 1)  READ (*,*) Tempr
-  IF (iedit == 2)  READ (*,*) n,m
-  IF (iedit == 3)  READ (*,*) doping
-  IF (iedit == 4)  READ (*,*) Efermi
-  IF (iedit == 5)  READ (*,*) refrac
-  IF (iedit == 6)  READ (*,*) ebg
-
-  IF (iedit == 14) READ (*,*) nhw_laser
-  IF (iedit == 15) READ (*,*) epmin,epmax
-  IF (iedit == 16) READ (*,*) laser_fwhm
-  IF (iedit == 17) READ (*,*) laser_theta  
-
-  IF (iedit == 18) READ (*,*) nk
-  IF (iedit == 19) READ (*,*) nee
-  IF (iedit == 20) READ (*,*) emine,emaxe        
-
-  GOTO 2
-3 CONTINUE
-  
-!----------------------------------------------------------------------
-!                        write parameter file
-!----------------------------------------------------------------------
-    IF (ichange /= 0) THEN
-       IF (imenu == 2) WRITE(*,*) 'Suffix for input data set:'//infile
-       WRITE (*,*) 'Enter suffix for output data set (20 char max):'
-       READ (*,2002) outfile
-    ELSE
-       outfile = infile
-    END IF
-
-    OPEN(unit=22,file='tube.param.'//outfile)
-    WRITE (22,*) Tempr
-    WRITE (22,*) n,m
-    WRITE (22,*) nk
-    WRITE (22,*) doping
-    WRITE (22,*) Efermi
-    WRITE (22,*) refrac
-    WRITE (22,*) ebg
-    WRITE (22,*) nhw_laser
-    WRITE (22,*) epmin,epmax
-    WRITE (22,*) laser_fwhm
-    WRITE (22,*) nee,emine,emaxe
-    WRITE (22,*) laser_theta
-
-    CLOSE(unit=22)
 
 !----------------------------------------------------------------------
 !                           write log file
@@ -551,6 +383,7 @@ PROGRAM cntabsorpt
   WRITE (*,*) '  absorption coefficient (1/cm), conductivity (e^2/h)'
   WRITE (*,*) '..Number of laser energies :',nhw_laser
   WRITE (*,*) '..Laser fwhm linewidth (eV):',laser_fwhm
+  WRITE (*,*) '..Laser polarization angle (deg) :',laser_theta
   
   IF ( doping .ne. 0.) THEN
     Efermi = fermiLevel(n,m,Tempr,doping)
@@ -562,13 +395,20 @@ PROGRAM cntabsorpt
 
 ! unit polarization vectors in complex notation (dimensionless)
   CALL polVector(laser_theta,epol)
-
+! ======================================================================
 ! ========================== permittivity ==============================
 ! real part of dielectric permittivity
 ! ======================================================================
+  DO i=1,26
   WRITE (*,*) '--------------------------------------------------------'
+
+  Efermi = (i-1)*0.1D0
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..Fermi level: ', Efermi
+  WRITE (fermistr, 350) Efermi
+  WRITE (*,*) '--------------------------------------------------------'
+
   CALL realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
-  ! n,m,nhex,nk,rka,Enk,Tempr,Efermi,epol,laser_fwhm
 
 ! plot eps1(hw) (Lin's) ************************
   OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
@@ -613,35 +453,6 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
 ! =======================================================================
-
-! ======================= absorption coefficient ========================
-! alpha
-  WRITE (*,*) '--------------------------------------------------------'
-  CALL imagDielAlpha(nhw_laser,hw_laser,eps2a,refrac,alpha)
-
-! plot absorption alpha(hw) ********************
-  OPEN(unit=22,file='tube.alpha.xyy.'//outfile)
-  DO ie = 1,nhw_laser
-     WRITE(22,1001) hw_laser(ie),alpha(ie)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'alpha(hw) in tube.alpha.xyy.'//outfile
-! =======================================================================
-
-! ======================= Electron energy loss spectra  =================
-! eels spectra
-  WRITE (*,*) '--------------------------------------------------------'
-  CALL EELS(nhw_laser,eps1a,eps2a,eelspec)
-
-! plot eels(hw) *******************************
-  OPEN(unit=22,file='tube.eels.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eelspec(ie)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'eels in tube.eels.xyy.'//outfile
-! =======================================================================
-
 ! ========================== conductivity ===============================
 ! real part
 ! =======================================================================
@@ -669,18 +480,77 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
 
-! absorption
 ! =======================================================================
+! ============================ absorption ===============================
   WRITE (*,*) '--------------------------------------------------------'
   CALL Absorption(nhw_laser,eps1a,eps2a,sigm1,sigm2,absorpt)
 
 ! plot absorpt(hw) *******************************
-  OPEN(unit=22,file='tube.absorpt.xyy.'//outfile)
+  OPEN(unit=22,file='/'//outfile//'tube.absorpt.xyy.'//trim(fermistr)//'.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'absorption in tube.absorpt.xyy.'//outfile
+  WRITE(*,*) 'absorption in '//'/'//outfile//tube.absorpt.xyy.'//trim(fermistr)//'.'//outfile
+
+  END DO
+
+! =======================================================================
+! ======================= absorption coefficient ========================
+! alpha
+! =======================================================================
+
+  WRITE (*,*) '--------------------------------------------------------'
+  CALL imagDielAlpha(nhw_laser,hw_laser,eps2a,refrac,alpha)
+
+! plot absorption alpha(hw) ********************
+  OPEN(unit=22,file='tube.alpha.xyy.'//outfile)
+  DO ie = 1,nhw_laser
+     WRITE(22,1001) hw_laser(ie),alpha(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'alpha(hw) in tube.alpha.xyy.'//outfile
+! =======================================================================
+! ======================= Electron energy loss spectra  =================
+! eels spectra
+! =======================================================================
+  WRITE (*,*) '--------------------------------------------------------'
+  CALL EELS(nhw_laser,eps1a,eps2a,eelspec)
+
+! plot eels(hw) *******************************
+  OPEN(unit=22,file='tube.eels.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie),eelspec(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'eels in tube.eels.xyy.'//outfile
+! =======================================================================
+! ========================== conductivity ===============================
+! real part
+! =======================================================================
+  WRITE (*,*) '--------------------------------------------------------'
+  CALL RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1)
+
+! plot sigm1(hw) ******************************
+  OPEN(unit=22,file='tube.sigm1.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'real part of conductivity in tube.sigm1.xyy.'//outfile
+
+! imaginary part
+! =======================================================================
+  WRITE (*,*) '--------------------------------------------------------'
+  CALL ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm2)
+
+! plot sigm2(hw) *******************************
+  OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
 
 ! imaginary part of intraband conductivity
 ! =======================================================================
@@ -710,45 +580,45 @@ PROGRAM cntabsorpt
 
 ! ============= part of code to check the calculations ================================
 ! *************** please, remove it later *********************************************
-
-  WRITE (*,*) '====================================================='
-  WRITE (*,*) '..test under integral function'
-
-  ALLOCATE(ss0(2,nhex,nhex,nk))
-  ALLOCATE(difFermiDisT(2,nhex,nhex,nk))
-  ALLOCATE(matrElementSq(2,nhex,nhex,nk))
-  ALLOCATE(diracAvgFunc(2,nhex,nhex,nk))
-
-  CALL ImagDynConductivityIntra_test(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,ss0,difFermiDist, &
-  matrElementSq,diracAvgFunc)
-
-    max_position = maxloc(ss0)
-    min_position = minloc(ss0)
-
-    PRINT*, 'maximum at', max_position
-    PRINT*, 'minimum at', min_position
-
-  OPEN(unit=22,file='tube.test_max.xyy.'//outfile)
-  DO k = 1, nk
-     WRITE(22,1001) rka(k)/rka(nk), ss0(max_position(1), max_position(2), max_position(3), k), &
-     difFermiDist(max_position(1), max_position(2), max_position(3), k), &
-     matrElementSq(max_position(1), max_position(2), max_position(3), k), &
-     diracAvgFunc(max_position(1), max_position(2), max_position(3), k)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'test max in file tube.test_max.xyy.'//outfile
-
-  OPEN(unit=22,file='tube.test_min.xyy.'//outfile)
-  DO k = 1, nk
-     WRITE(22,1001) rka(k)/rka(nk), ss0(min_position(1), min_position(2), min_position(3), k), &
-     difFermiDist(min_position(1), min_position(2), min_position(3), k), &
-     matrElementSq(min_position(1), min_position(2), min_position(3), k), &
-     diracAvgFunc(min_position(1), min_position(2), min_position(3), k)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'test min in file tube.test_min.xyy.'//outfile
-
-  DEALLOCATE(ss0,difFermiDist,matrElementSq,diracAvgFunc)
+!
+! WRITE (*,*) '====================================================='
+! WRITE (*,*) '..test under integral function'
+!
+! ALLOCATE(ss0(2,nhex,nhex,nk))
+! ALLOCATE(difFermiDisT(2,nhex,nhex,nk))
+! ALLOCATE(matrElementSq(2,nhex,nhex,nk))
+! ALLOCATE(diracAvgFunc(2,nhex,nhex,nk))
+!
+! CALL ImagDynConductivityIntra_test(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,ss0,difFermiDist, &
+! matrElementSq,diracAvgFunc)
+!
+!   max_position = maxloc(ss0)
+!   min_position = minloc(ss0)
+!
+!   PRINT*, 'maximum at', max_position
+!   PRINT*, 'minimum at', min_position
+!
+! OPEN(unit=22,file='tube.test_max.xyy.'//outfile)
+! DO k = 1, nk
+!    WRITE(22,1001) rka(k)/rka(nk), ss0(max_position(1), max_position(2), max_position(3), k), &
+!    difFermiDist(max_position(1), max_position(2), max_position(3), k), &
+!    matrElementSq(max_position(1), max_position(2), max_position(3), k), &
+!    diracAvgFunc(max_position(1), max_position(2), max_position(3), k)
+! ENDDO
+! CLOSE(unit=22)
+! WRITE(*,*) 'test max in file tube.test_max.xyy.'//outfile
+!
+! OPEN(unit=22,file='tube.test_min.xyy.'//outfile)
+! DO k = 1, nk
+!    WRITE(22,1001) rka(k)/rka(nk), ss0(min_position(1), min_position(2), min_position(3), k), &
+!    difFermiDist(min_position(1), min_position(2), min_position(3), k), &
+!    matrElementSq(min_position(1), min_position(2), min_position(3), k), &
+!    diracAvgFunc(min_position(1), min_position(2), min_position(3), k)
+! ENDDO
+! CLOSE(unit=22)
+! WRITE(*,*) 'test min in file tube.test_min.xyy.'//outfile
+!
+! DEALLOCATE(ss0,difFermiDist,matrElementSq,diracAvgFunc)
 
 ! ---------------------------------------------------------
 ! check convergence of the result according to dk chosen
@@ -854,6 +724,7 @@ PROGRAM cntabsorpt
 1001  FORMAT(901(1X,G13.5))
 1002  FORMAT(2F8.4)
 2002  FORMAT(1A20)
+350   FORMAT(F3.1)
 
 END PROGRAM cntabsorpt
 !*******************************************************************************
