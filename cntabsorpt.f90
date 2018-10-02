@@ -99,7 +99,7 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE   :: diracAvgFunc(:,:,:,:)
   INTEGER                :: prefer_position(4), max_position(4), min_position(4)
 
-  REAL                   :: divergence(9), kCoef(10)
+  REAL                   :: divergence(9), kCoef(10), maxAbsDif(9)
   INTEGER                :: i
   REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
 
@@ -404,110 +404,110 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-  WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..begin DO loop over Fermi level in range 0..2.5 eV'
-  DO i=1,26
-  WRITE (*,*) '--------------------------------------------------------'
-
-  Efermi = (i-1)*0.1D0
-  WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..Fermi level: ', Efermi
-  WRITE (fermistr, 350) Efermi
-  WRITE (thetastr, 360) INT(laser_theta/10.)
-  WRITE (*,*) '--------------------------------------------------------'
-
-! ======================================================================
-! ========================== permittivity ==============================
-! real part of dielectric permittivity
-! ======================================================================
-
-  CALL realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
-
-! plot eps1(hw) (Lin's) ************************
-  OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps1a(ie)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
-
-
-  CALL realDielEn_met2(nhw_laser,ebg, hw_laser,eps2a,eps1a1)   !Kramers-Kronig
-
-! plot eps1(hw) (Kramers-Kronig) ****************
-  OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps1a1(ie)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'real part of dielectric function in tube.eps1kk.xyy.'//outfile
-
-! imaginary part of dielectric permittivity
-! =======================================================================
-  WRITE (*,*) '--------------------------------------------------------'
-  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)  !From Lin's paper
-
-! plot eps2(hw) ********************************
-  OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps2a(ie)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
-
-
-  CALL imagDielEn_met2(nhw_laser,hw_laser,eps1a,eps2a1)  !Kramers-Kronig
-
-! plot eps2(hw) (Kramers-Kronig) ***************
-  OPEN(unit=22,file='tube.eps2kk.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps2a1(ie)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
-! =======================================================================
-! ========================== conductivity ===============================
-! real part
-! =======================================================================
-  WRITE (*,*) '--------------------------------------------------------'
-  CALL RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1)
-
-! plot sigm1(hw) ******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'real part of conductivity in', TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-
-! imaginary part
-! =======================================================================
-  WRITE (*,*) '--------------------------------------------------------'
-  CALL ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm2)
-
-! plot sigm2(hw) *******************************
-  OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
-
-! =======================================================================
-! ============================ absorption ===============================
-  WRITE (*,*) '--------------------------------------------------------'
-  CALL Absorption(nhw_laser,eps1a,eps2a,sigm1,sigm2,absorpt)
-
-! plot absorpt(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'absorption in ', TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-
-  END DO
-  WRITE (*,*) '..end of DO loop over Fermi level'
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..begin DO loop over Fermi level in range 0..2.5 eV'
+!  DO i=1,26
+!  WRITE (*,*) '--------------------------------------------------------'
+!
+!  Efermi = (i-1)*0.1D0
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..Fermi level: ', Efermi
+!  WRITE (fermistr, 350) Efermi
+!  WRITE (thetastr, 360) INT(laser_theta/10.)
+!  WRITE (*,*) '--------------------------------------------------------'
+!
+!! ======================================================================
+!! ========================== permittivity ==============================
+!! real part of dielectric permittivity
+!! ======================================================================
+!
+!  CALL realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
+!
+!! plot eps1(hw) (Lin's) ************************
+!  OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
+!  DO ie = 1, nhw_laser
+!     WRITE(22,1001) hw_laser(ie),eps1a(ie)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
+!
+!
+!  CALL realDielEn_met2(nhw_laser,ebg, hw_laser,eps2a,eps1a1)   !Kramers-Kronig
+!
+!! plot eps1(hw) (Kramers-Kronig) ****************
+!  OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
+!  DO ie = 1, nhw_laser
+!     WRITE(22,1001) hw_laser(ie),eps1a1(ie)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'real part of dielectric function in tube.eps1kk.xyy.'//outfile
+!
+!! imaginary part of dielectric permittivity
+!! =======================================================================
+!  WRITE (*,*) '--------------------------------------------------------'
+!  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)  !From Lin's paper
+!
+!! plot eps2(hw) ********************************
+!  OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
+!  DO ie = 1, nhw_laser
+!     WRITE(22,1001) hw_laser(ie),eps2a(ie)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
+!
+!
+!  CALL imagDielEn_met2(nhw_laser,hw_laser,eps1a,eps2a1)  !Kramers-Kronig
+!
+!! plot eps2(hw) (Kramers-Kronig) ***************
+!  OPEN(unit=22,file='tube.eps2kk.xyy.'//outfile)
+!  DO ie = 1, nhw_laser
+!     WRITE(22,1001) hw_laser(ie),eps2a1(ie)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
+!! =======================================================================
+!! ========================== conductivity ===============================
+!! real part
+!! =======================================================================
+!  WRITE (*,*) '--------------------------------------------------------'
+!  CALL RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1)
+!
+!! plot sigm1(hw) ******************************
+!  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
+!  DO ie = 1, nhw_laser
+!     WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'real part of conductivity in', TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
+!
+!! imaginary part
+!! =======================================================================
+!  WRITE (*,*) '--------------------------------------------------------'
+!  CALL ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm2)
+!
+!! plot sigm2(hw) *******************************
+!  OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
+!  DO ie = 1, nhw_laser
+!     WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
+!
+!! =======================================================================
+!! ============================ absorption ===============================
+!  WRITE (*,*) '--------------------------------------------------------'
+!  CALL Absorption(nhw_laser,eps1a,eps2a,sigm1,sigm2,absorpt)
+!
+!! plot absorpt(hw) *******************************
+!  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
+!  DO ie = 1, nhw_laser
+!     WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'absorption in ', TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
+!
+!  END DO
+!  WRITE (*,*) '..end of DO loop over Fermi level'
 
 ! ***********************************************************************
 ! END OF FERMI LEVEL LOOP
@@ -706,90 +706,90 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------
 ! check convergence of the result according to dk chosen
 ! ---------------------------------------------------------
-!  DEALLOCATE(rka)
-!  DEALLOCATE(Enk)
-!  DEALLOCATE(Znk)
-!  DEALLOCATE(cDipole)
-!
-!  ALLOCATE(eps2aii(10,nhw_laser))
-!
-!  kCoef = (/10., 8., 6., 4., 2., 1., 0.8, 0.5, 0.2, 0.1/)
-!
-!  DO i=1,10
-!
-!      dk = laser_fwhm/hbarvfermi*1.D0/kCoef(i)
-!      nk = INT(pi/(trLength(n,m)*dk))
-!
-!      PRINT*, 'Coef = ', kCoef(i), 'Number of k points, nk = ', nk
-!
-!  ALLOCATE(rka(nk))
-!  ALLOCATE(Enk(2,nhex,nk))
-!  ALLOCATE(Znk(2,2,nhex,nk))
-!  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
-!
-!! define k point array (1/A): -pi/T .. pi/T
-!  rkmax=pi/trLength(n,m)
-!  rkmin=-rkmax
-!  CALL linArray(nk,rkmin,rkmax,rka)
-!  dk=rka(2)-rka(1)
-!
-!! compute energy bands En(k) (eV)
-!  DO mu=1,nhex
-!     DO k=1,nk
-!        rk=rka(k)
-!        CALL etbTubeBand(n,m,mu,rk,En,Zk)
-!        DO ii=1,2
-!           Enk(ii,mu,k)=En(ii)
-!           Znk(ii,1:2,mu,k)=Zk(ii,1:2)
-!        END DO
-!     END DO
-!  END DO
-!
-!  DO n1 = 1,2
-!    DO n2 = 1,2
-!        DO mu1 = 1, nhex
-!            DO mu2 = 1, nhex
-!
-!                DO k = 1, nk
-!                rk = rka(k)
-!
-!                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
-!
-!                END DO
-!
-!            END DO
-!         END DO
-!     END DO
-!  END DO
-!
-!  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)
-!
-!  eps2aii(i,1:nhw_laser) = eps2a(1:nhw_laser)
-!
-!  DEALLOCATE(rka)
-!  DEALLOCATE(Enk)
-!  DEALLOCATE(Znk)
-!  DEALLOCATE(cDipole)
-!
-!  END DO
-!
-!  DO i=1,9
-!    divergence(i) = 0.0
-!    DO ie = 1, nhw_laser
-!        divergence(i) = divergence(i) + (eps2aii(i+1,ie) - eps2aii(i,ie))**2
-!    END DO
-!    divergence(i) = SQRT(divergence(i))
-!  END DO
-!
-!  OPEN(unit=22,file='tube.divergence.xyy.'//outfile)
-!  WRITE(22,1001) kCoef(1), 0.D0, 1.D0/kCoef(1)
-!  DO i=1,9
-!     WRITE(22,1001) kCoef(i+1), divergence(i), 1.D0/kCoef(i+1)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'divergence in file tube.divergence.xyy.'//outfile
-!
-!  DEALLOCATE(eps2aii)
+  DEALLOCATE(rka)
+  DEALLOCATE(Enk)
+  DEALLOCATE(Znk)
+  DEALLOCATE(cDipole)
+
+  ALLOCATE(eps2aii(10,nhw_laser))
+
+  kCoef = (/10., 9., 8., 7., 6., 5., 4., 3., 2., 1./)
+
+  DO i=1,10
+
+      dk = laser_fwhm/hbarvfermi*1.D0/kCoef(i)
+      nk = INT(pi/(trLength(n,m)*dk))
+
+      PRINT*, 'Coef = ', kCoef(i), 'Number of k points, nk = ', nk
+
+  ALLOCATE(rka(nk))
+  ALLOCATE(Enk(2,nhex,nk))
+  ALLOCATE(Znk(2,2,nhex,nk))
+  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
+
+! define k point array (1/A): -pi/T .. pi/T
+  rkmax=pi/trLength(n,m)
+  rkmin=-rkmax
+  CALL linArray(nk,rkmin,rkmax,rka)
+  dk=rka(2)-rka(1)
+
+! compute energy bands En(k) (eV)
+  DO mu=1,nhex
+     DO k=1,nk
+        rk=rka(k)
+        CALL etbTubeBand(n,m,mu,rk,En,Zk)
+        DO ii=1,2
+           Enk(ii,mu,k)=En(ii)
+           Znk(ii,1:2,mu,k)=Zk(ii,1:2)
+        END DO
+     END DO
+  END DO
+
+  DO n1 = 1,2
+    DO n2 = 1,2
+        DO mu1 = 1, nhex
+            DO mu2 = 1, nhex
+
+                DO k = 1, nk
+                rk = rka(k)
+
+                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
+
+                END DO
+
+            END DO
+         END DO
+     END DO
+  END DO
+
+  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)
+
+  eps2aii(i,1:nhw_laser) = eps2a(1:nhw_laser)
+
+  DEALLOCATE(rka)
+  DEALLOCATE(Enk)
+  DEALLOCATE(Znk)
+  DEALLOCATE(cDipole)
+
+  END DO
+
+  DO i=1,9
+    divergence(i) = 0.0
+    DO ie = 1, nhw_laser
+        divergence(i) = divergence(i) + (eps2aii(i,ie) - eps2aii(10,ie))**2
+    END DO
+    divergence(i) = SQRT(divergence(i))/nhw_laser
+    maxAbsDif(i) = MAXVAL(ABS(eps2aii(i,1:nhw_laser) - eps2aii(10,1:nhw_laser)))
+  END DO
+
+  OPEN(unit=22,file='tube.divergence.xyy.'//outfile)
+  DO i=1,9
+     WRITE(22,1001) kCoef(i), divergence(i), maxAbsDif(i)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'divergence in file tube.divergence.xyy.'//outfile
+
+  DEALLOCATE(eps2aii)
 
 ! ============= part of code to check the calculations ================================
 ! ************************************* END *******************************************
