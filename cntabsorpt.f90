@@ -92,12 +92,10 @@ PROGRAM cntabsorpt
   CHARACTER(5)            :: fermistr, thetastr
 
 !temp variables
-  REAL(8), ALLOCATABLE   :: plotfuncmaxtest(:), plotfuncmintest(:), kaxis(:)
-  REAL(8), ALLOCATABLE   :: ss0(:,:,:,:)
-  REAL(8), ALLOCATABLE   :: difFermiDist(:,:,:,:)
-  REAL(8), ALLOCATABLE   :: matrElementSq(:,:,:,:)
-  REAL(8), ALLOCATABLE   :: diracAvgFunc(:,:,:,:)
-  INTEGER                :: prefer_position(4), max_position(4), min_position(4)
+  REAL(8), ALLOCATABLE   :: difFermiDist(:,:,:,:,:)
+  REAL(8), ALLOCATABLE   :: matrElementSq(:,:,:,:,:)
+  REAL(8), ALLOCATABLE   :: diracAvgFunc(:,:,:,:,:,:)
+  INTEGER                :: max_position(6), min_position(6)
 
   REAL                   :: divergence(9), kCoef(10), maxAbsDif(9)
   INTEGER                :: i
@@ -203,7 +201,11 @@ PROGRAM cntabsorpt
   nhex=nHexagon(n,m)
 
 ! choose the correct number of k-points
-  dk = laser_fwhm/(4*hbarvfermi)
+! it depends on broadening factor and unit cell translational vector length
+! the dk is based on broadening, but also multiplied by 1/5
+! the prefactor 1/5 was chosen after several checks of calculational convergence
+! the resulting accuracy should be at least 2 signs
+  dk = laser_fwhm/(5*hbarvfermi)
   nk1 = INT(2*pi/(trLength(n,m)*dk))
 
   IF (nk1 > nk) THEN
@@ -221,7 +223,8 @@ PROGRAM cntabsorpt
   CALL linArray(nk,rkmin,rkmax,rka)
   dk=rka(2)-rka(1)            
 
-! compute energy bands En(k) (eV)      
+! compute energy bands En(k) (eV)
+! NOTE: cutting lines are always taken from 1 to N
   DO mu=1,nhex 
      DO k=1,nk
         rk=rka(k)
@@ -664,26 +667,27 @@ PROGRAM cntabsorpt
 ! ============= part of code to check the calculations ================================
 ! *************** please, remove it later *********************************************
 !
-! WRITE (*,*) '====================================================='
-! WRITE (*,*) '..test under integral function'
-!
-! ALLOCATE(ss0(2,nhex,nhex,nk))
-! ALLOCATE(difFermiDisT(2,nhex,nhex,nk))
-! ALLOCATE(matrElementSq(2,nhex,nhex,nk))
-! ALLOCATE(diracAvgFunc(2,nhex,nhex,nk))
-!
-! CALL ImagDynConductivityIntra_test(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,ss0,difFermiDist, &
-! matrElementSq,diracAvgFunc)
-!
-!   max_position = maxloc(ss0)
-!   min_position = minloc(ss0)
-!
-!   PRINT*, 'maximum at', max_position
-!   PRINT*, 'minimum at', min_position
-!
+ WRITE (*,*) '====================================================='
+ WRITE (*,*) '..test under integral function'
+
+ ALLOCATE(difFermiDisT(2,2,nhex,nhex,nk))
+ ALLOCATE(matrElementSq(2,2,nhex,nhex,nk))
+ ALLOCATE(diracAvgFunc(2,2,nhex,nhex,nk,nhw_laser))
+
+ CALL Func_test(nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,difFermiDist, &
+ matrElementSq,diracAvgFunc)
+
+   max_position = maxloc(diracAvgFunc)
+   min_position = minloc(diracAvgFunc)
+
+   PRINT*, 'maximum at', max_position
+   PRINT*, 'minimum at', min_position
+
+   PRINT*, 'max hw', hw_laser(max_position(4)), 'min hw',  hw_laser(min_position(4))
+
 ! OPEN(unit=22,file='tube.test_max.xyy.'//outfile)
 ! DO k = 1, nk
-!    WRITE(22,1001) rka(k)/rka(nk), ss0(max_position(1), max_position(2), max_position(3), k), &
+!    WRITE(22,1001) rka(k)/rka(nk), &
 !    difFermiDist(max_position(1), max_position(2), max_position(3), k), &
 !    matrElementSq(max_position(1), max_position(2), max_position(3), k), &
 !    diracAvgFunc(max_position(1), max_position(2), max_position(3), k)
@@ -693,103 +697,103 @@ PROGRAM cntabsorpt
 !
 ! OPEN(unit=22,file='tube.test_min.xyy.'//outfile)
 ! DO k = 1, nk
-!    WRITE(22,1001) rka(k)/rka(nk), ss0(min_position(1), min_position(2), min_position(3), k), &
+!    WRITE(22,1001) rka(k)/rka(nk), &
 !    difFermiDist(min_position(1), min_position(2), min_position(3), k), &
 !    matrElementSq(min_position(1), min_position(2), min_position(3), k), &
 !    diracAvgFunc(min_position(1), min_position(2), min_position(3), k)
 ! ENDDO
 ! CLOSE(unit=22)
 ! WRITE(*,*) 'test min in file tube.test_min.xyy.'//outfile
-!
-! DEALLOCATE(ss0,difFermiDist,matrElementSq,diracAvgFunc)
+
+ DEALLOCATE(difFermiDist,matrElementSq,diracAvgFunc)
 
 ! ---------------------------------------------------------
 ! check convergence of the result according to dk chosen
 ! ---------------------------------------------------------
-  DEALLOCATE(rka)
-  DEALLOCATE(Enk)
-  DEALLOCATE(Znk)
-  DEALLOCATE(cDipole)
-
-  ALLOCATE(eps2aii(10,nhw_laser))
-
-  kCoef = (/1., 2., 3., 4., 5., 6., 7., 8., 9., 10./)
-
-  DO i=1,10
-
-      dk = laser_fwhm/hbarvfermi*1.D0/kCoef(i)
-      nk = INT(pi/(trLength(n,m)*dk))
-
-      PRINT*, 'Coef = ', kCoef(i), 'Number of k points, nk = ', nk
-
-  ALLOCATE(rka(nk))
-  ALLOCATE(Enk(2,nhex,nk))
-  ALLOCATE(Znk(2,2,nhex,nk))
-  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
-
-! define k point array (1/A): -pi/T .. pi/T
-  rkmax=pi/trLength(n,m)
-  rkmin=-rkmax
-  CALL linArray(nk,rkmin,rkmax,rka)
-  dk=rka(2)-rka(1)
-
-! compute energy bands En(k) (eV)
-  DO mu=1,nhex
-     DO k=1,nk
-        rk=rka(k)
-        CALL etbTubeBand(n,m,mu,rk,En,Zk)
-        DO ii=1,2
-           Enk(ii,mu,k)=En(ii)
-           Znk(ii,1:2,mu,k)=Zk(ii,1:2)
-        END DO
-     END DO
-  END DO
-
-  DO n1 = 1,2
-    DO n2 = 1,2
-        DO mu1 = 1, nhex
-            DO mu2 = 1, nhex
-
-                DO k = 1, nk
-                rk = rka(k)
-
-                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
-
-                END DO
-
-            END DO
-         END DO
-     END DO
-  END DO
-
-  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)
-
-  eps2aii(i,1:nhw_laser) = eps2a(1:nhw_laser)
-
-  DEALLOCATE(rka)
-  DEALLOCATE(Enk)
-  DEALLOCATE(Znk)
-  DEALLOCATE(cDipole)
-
-  END DO
-
-  DO i=1,9
-    divergence(i) = 0.0
-    DO ie = 1, nhw_laser
-        divergence(i) = divergence(i) + (eps2aii(i,ie) - eps2aii(10,ie))**2
-    END DO
-    divergence(i) = SQRT(divergence(i))/nhw_laser
-    maxAbsDif(i) = MAXVAL(ABS(eps2aii(i,1:nhw_laser) - eps2aii(10,1:nhw_laser)))
-  END DO
-
-  OPEN(unit=22,file='tube.divergence.xyy.'//outfile)
-  DO i=1,9
-     WRITE(22,1001) kCoef(i), divergence(i), maxAbsDif(i)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'divergence in file tube.divergence.xyy.'//outfile
-
-  DEALLOCATE(eps2aii)
+!  DEALLOCATE(rka)
+!  DEALLOCATE(Enk)
+!  DEALLOCATE(Znk)
+!  DEALLOCATE(cDipole)
+!
+!  ALLOCATE(eps2aii(10,nhw_laser))
+!
+!  kCoef = (/1., 2., 3., 4., 5., 6., 7., 8., 9., 10./)
+!
+!  DO i=1,10
+!
+!      dk = laser_fwhm/hbarvfermi*1.D0/kCoef(i)
+!      nk = INT(pi/(trLength(n,m)*dk))
+!
+!      PRINT*, 'Coef = ', kCoef(i), 'Number of k points, nk = ', nk
+!
+!  ALLOCATE(rka(nk))
+!  ALLOCATE(Enk(2,nhex,nk))
+!  ALLOCATE(Znk(2,2,nhex,nk))
+!  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
+!
+!! define k point array (1/A): -pi/T .. pi/T
+!  rkmax=pi/trLength(n,m)
+!  rkmin=-rkmax
+!  CALL linArray(nk,rkmin,rkmax,rka)
+!  dk=rka(2)-rka(1)
+!
+!! compute energy bands En(k) (eV)
+!  DO mu=1,nhex
+!     DO k=1,nk
+!        rk=rka(k)
+!        CALL etbTubeBand(n,m,mu,rk,En,Zk)
+!        DO ii=1,2
+!           Enk(ii,mu,k)=En(ii)
+!           Znk(ii,1:2,mu,k)=Zk(ii,1:2)
+!        END DO
+!     END DO
+!  END DO
+!
+!  DO n1 = 1,2
+!    DO n2 = 1,2
+!        DO mu1 = 1, nhex
+!            DO mu2 = 1, nhex
+!
+!                DO k = 1, nk
+!                rk = rka(k)
+!
+!                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
+!
+!                END DO
+!
+!            END DO
+!         END DO
+!     END DO
+!  END DO
+!
+!  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)
+!
+!  eps2aii(i,1:nhw_laser) = eps2a(1:nhw_laser)
+!
+!  DEALLOCATE(rka)
+!  DEALLOCATE(Enk)
+!  DEALLOCATE(Znk)
+!  DEALLOCATE(cDipole)
+!
+!  END DO
+!
+!  DO i=1,9
+!    divergence(i) = 0.0
+!    DO ie = 1, nhw_laser
+!        divergence(i) = divergence(i) + (eps2aii(i,ie) - eps2aii(10,ie))**2
+!    END DO
+!    divergence(i) = SQRT(divergence(i))/nhw_laser
+!    maxAbsDif(i) = MAXVAL(ABS(eps2aii(i,1:nhw_laser) - eps2aii(10,1:nhw_laser)))
+!  END DO
+!
+!  OPEN(unit=22,file='tube.divergence.xyy.'//outfile)
+!  DO i=1,9
+!     WRITE(22,1001) kCoef(i), divergence(i), maxAbsDif(i)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'divergence in file tube.divergence.xyy.'//outfile
+!
+!  DEALLOCATE(eps2aii)
 
 ! ============= part of code to check the calculations ================================
 ! ************************************* END *******************************************

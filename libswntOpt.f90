@@ -16,6 +16,7 @@
 ! [2] J.-W, Jiang et al, PRB, 73, 235434 (2006)
 ! [3] J. Jiang et al, PRB, 71, 205420 (2005).
 ! [4] A. Gruneis, PhD thesis, Tohoku University (2004).
+! [5] Lin, M. F., and Kenneth W-K. Shung., PRB, 50, 17744 (1994).
 !-------------------------------------------------------------------------------
 ! Contents     :
 ! - SUBROUTINE polVector(theta,epol)
@@ -25,16 +26,13 @@
 ! - SUBROUTINE tbDipolZ(n,m,n1,mu1,n2,mu2,rk,zDipole)
 ! - SUBROUTINE tbDipolZ2(n,m,n1,mu1,n2,mu2,rk,zDipole)
 ! - SUBROUTINE tbDipolXY(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
-! - SUBROUTINE tbDipolXY2(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
 ! - SUBROUTINE atomDipolZ(n,m,iiatom,jj1,jj2,iatom,j1,j2,zdipole)
 ! - SUBROUTINE atomDipoleMX(n,m,iiatom,jj1,jj2,iatom,j1,j2,dipole)
 ! - FUNCTION gx (cg, cg1, cg3, cg5, cg7, cg9, cg11, cg13)
 ! - FUNCTION gy (cg, cg1, cg3, cg5, cg7, cg9, cg11, cg13)
 ! - FUNCTION gz (cg, cg1, cg3, cg5, cg7, cg9, cg11, cg13)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! mainly used
-! Lin, M. F., and Kenneth W-K. Shung. "Plasmons and optical properties of carbon nanotubes."
-! Physical Review B 50.23 (1994): 17744.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! - SUBROUTINE realDielEn(n,m,Tempr,doping,epol,fwhm,ne,hw,eps1)
 ! - SUBROUTINE realDielEn_met2(ne,hw,eps2,eps1)
@@ -44,6 +42,7 @@
 ! - SUBROUTINE RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1)
 ! - SUBROUTINE ImagDynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
 ! - SUBROUTINE ImagDynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm2)
+! - SUBROUTINE Func_test(nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,difFermiDist,matrElementSq,diracAvgFunc)
 ! - SUBROUTINE tbDipolXYOrt(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
 !*******************************************************************************
 !*******************************************************************************
@@ -347,7 +346,7 @@ SUBROUTINE tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)
   CALL reducedCutLine(n,m,mu2,mmu2)            
       
   rkk = rk
-  CALL tbDipolXY2(n,m,n1,mmu1,n2,mmu2,rkk,xDipole,yDipole)
+  CALL tbDipolXY(n,m,n1,mmu1,n2,mmu2,rkk,xDipole,yDipole)
   CALL tbDipolZ (n,m,n1,mmu1,n2,mmu2,rkk,zDipole)      
       
   cDipole(1) = xDipole
@@ -513,148 +512,6 @@ END SUBROUTINE tbDipolZ2
 !*******************************************************************************
 SUBROUTINE tbDipolXY(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
 !===============================================================================
-! WARNING : something wrong in this subroutine
-! PLEASE, use tbDipolXY2 !!!
-! xy component of optical dipole matrix element for (n,m) carbon tube
-!        Dx = < n1,mu1,rk | d/dx | n2,mu2,rk > (1/Angstroms)
-!        Dy = < n1,mu1,rk | d/dy | n2,mu2,rk > (1/Angstroms)  
-!-------------------------------------------------------------------------------
-! Input        :
-!  n,m           chiral vector coordinates in (a1,a2)
-!  n1            bra vector electronic state (n=1,2)
-!  mu1           bra vector electronic state manifold (0...NHexagon-1)
-!
-!  n2            ket vector electronic state (n=1,2)
-!  mu2           ket vector electronic state manifold (0...NHexagon-1)
-!
-!  rk            electronic state k (1/A) (-pi/T < k < pi/T)
-! Output       :
-!  xDipole       x component of dipole matrix element (1/Angstroms)
-!  yDipole       y component of dipole matrix element (1/Angstroms)
-!===============================================================================
-  IMPLICIT NONE
-  REAL(8), PARAMETER     :: rktol = .0005D0
-
-! input variables
-  INTEGER, INTENT(in)    :: n, m, n1, mu1, n2, mu2
-  REAL(8), INTENT(in)    :: rk
-
-! output variables
-  COMPLEX(8),INTENT(out) :: xDipole, yDipole
-
-! working variables
-  INTEGER, SAVE, DIMENSION(0:4) :: nvecs = (/ 1, 3, 6, 3, 6 /)
-  COMPLEX(8), SAVE              :: ci = (0.D0,1.D0)
-      
-  REAL(8),    DIMENSION(2)      :: Ek1, Ek2  !(2)
-  COMPLEX(8), DIMENSION(2,2)    :: Zk1, Zk2  !(2,2)                  
-
-  COMPLEX(8)             :: c1, c2
-  REAL(8)                :: dipole(3)
-      
-  INTEGER                :: ier, mmu1, mmu2, mmm, iatom, jatom
-  INTEGER                :: nn, ivec, j1, j2, NNatom
-      
-  REAL(8)                :: rkk, phi
-      
-! check input for errors
-  ier = 0
-  IF (n1 /= 1 .AND. n1 /= 2) THEN
-     ier = 1
-     WRITE (*,*) 'tbDipolXY err: invalid n1:', n1
-  END IF
-
-  IF (n2.NE.1 .AND. n2.NE.2) THEN
-     ier = 1
-     WRITE (*,*) 'tbDipolXY err: invalid n2:', n2
-  END IF
-  
-  IF(ier.NE.0) STOP
-      
-! initialize xDipole and yDipole
-  xDipole = 0.D0
-  yDipole = 0.D0
-      
-! reduced cutting line numbers in range mu = 1...nhex
-  CALL reducedCutLine(n,m,mu1,mmu1)
-  CALL reducedCutLine(n,m,mu2,mmu2)      
-  
-! mu1 = mu2-1 selection rule
-  CALL reducedCutLine(n,m,mmu2-1,mmm)
-  IF (mmu1 == mmm) THEN
-            
-     ! electronic orbitals (mu1,k) and (mu2,k)
-     rkk = rk
-     IF (ABS(rkk) < rktol) rkk = rktol
-     CALL etbTubeBand(n,m,mmu1,rkk,Ek1,Zk1)
-     CALL etbTubeBand(n,m,mmu2,rkk,Ek2,Zk2)
-     
-     ! compute x component of dipole vector (1/Angstroms)
-     DO iatom = 1, 2
-        DO nn = 1, 4
-           DO ivec = 1, nvecs(nn)
-      
-              CALL NNj1j2(iatom,ivec,nn,j1,j2)
-              CALL phaseFactor(n,m, j1,j2, rk,mmu1, phi)
-        
-              jatom = NNatom(iatom,nn)
-              CALL atomDipoleMX(n,m, iatom,0,0,jatom,j1,j2,dipole)
-
-              c1 = CONJG( Zk1(iatom,n1) )
-              c2 = Zk2(jatom,n2)*CDEXP(ci*phi)       
-          
-              xDipole = xDipole + c1*c2*(dipole(1)-ci*dipole(2))
-      
-           END DO
-        END DO
-     END DO
-        
-     xDipole = xDipole/2.D0  
-     yDipole = ci*xDipole
-     
-  END IF
-      
-! mu1 = mu2+1 selection rule
-  CALL reducedCutLine(n,m,mmu2+1,mmm)
-  IF (mmu1 == mmm) THEN
-      
-     ! electronic orbitals (mu1,k) and (mu2,k)
-     rkk = rk
-     IF (ABS(rkk) < rktol) rkk = rktol
-     CALL etbTubeBand(n,m,mmu1,rkk,Ek1,Zk1)
-     CALL etbTubeBand(n,m,mmu2,rkk,Ek2,Zk2)
-        
-     ! compute x component of dipole vector (1/Angstroms)
-     DO iatom = 1, 2
-        DO nn = 1, 4
-           DO ivec = 1, nvecs(nn)
-      
-              CALL NNj1j2(iatom,ivec,nn,j1,j2)
-              CALL phaseFactor(n,m,j1,j2,rk,mmu1,phi)
-        
-              jatom = NNatom(iatom,nn)
-              CALL atomDipoleMX(n,m,iatom,0,0,jatom,j1,j2,dipole)
-
-              c1 = CONJG( Zk1(iatom,n1) )
-              c2 = Zk2(jatom,n2)*CDEXP(ci*phi)       
-          
-              xDipole = xDipole+c1*c2*(dipole(1)+ci*dipole(2))       
-      
-           END DO
-        END DO
-     END DO
-        
-     xDipole = xDipole/2.D0
-     yDipole =-ci*xDipole
-
-  END IF
-                        
-  RETURN
-END SUBROUTINE tbDipolXY
-!*******************************************************************************
-!*******************************************************************************
-SUBROUTINE tbDipolXY2(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
-!===============================================================================
 ! xy component of optical dipole matrix element for (n,m) carbon tube
 !        Dx = < n1,mu1,rk | d/dx | n2,mu2,rk > (1/Angstroms)
 !        Dy = < n1,mu1,rk | d/dy | n2,mu2,rk > (1/Angstroms)  
@@ -806,7 +663,7 @@ SUBROUTINE tbDipolXY2(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
   END IF
                               
   RETURN
-END SUBROUTINE tbDipolXY2
+END SUBROUTINE tbDipolXY
 !*******************************************************************************
 !*******************************************************************************
 SUBROUTINE atomDipolZ(n,m,iiatom,jj1,jj2,iatom,j1,j2,zdipole)
@@ -2248,16 +2105,13 @@ SUBROUTINE ImagDynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epo
 END SUBROUTINE ImagDynConductivityIntra
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE ImagDynConductivityIntra_test(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ss0, &
+SUBROUTINE Func_test(nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,&
 difFermiDist,matrElementSq,diracAvgFunc)
 !===============================================================================
-! Compute the imaginary part of the dynamical conductivity as a function
-! of probe photon energy
-! expression from Sasaki, Ken-ichi, and Yasuhiro Tokura. "Theory of a Carbon-Nanotube Polarization Switch."
-! Physical Review Applied 9.3 (2018): 034018.
+! Subroutine to calculate functions of main importance
+! Just to control if everything is reasonable
 !-------------------------------------------------------------------------------
 ! Input        :
-!  n,m           chiral vector coordinates in (a1,a2)
 !  nhex          number of hexagons
 !  nk            number of k points
 !  rka           array of k points (1/A)
@@ -2271,12 +2125,13 @@ difFermiDist,matrElementSq,diracAvgFunc)
 !  ne            number of probe photon energies
 !  hw(ne)        array of probe photon energies (eV)
 ! Output       :
-!  sigm2(ne)      imaginary part of dynamical conductivity (none)
+!  difFermiDist(2,2,nhex,nhex,nk)   Fermi distribution as a function of k
+!  matrElementSq(2,2,nhex,nhex,nk)  matrix element square as a function of k
+!  diracAvgFunc(2,2,nhex,nhex,nk,ne)   Lorentzian-like function as a function of k
 !===============================================================================
   IMPLICIT NONE
 
 ! input variables
-  INTEGER, INTENT(in)    :: n, m
   INTEGER, INTENT(in)    :: nhex
   INTEGER, INTENT(in)    :: nk
 
@@ -2287,22 +2142,19 @@ difFermiDist,matrElementSq,diracAvgFunc)
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
 
-  REAL(8), INTENT(in) :: epol(3)
+  REAL(8), INTENT(in)    :: epol(3)
 
   REAL(8), INTENT(in)    :: fwhm
+  INTEGER, INTENT(in)    :: ne
+  REAL(8), INTENT(in)    :: hw(ne)
 
 
 ! output variables
-  REAL(8)                :: ss0(2,nhex,nhex,nk)
-  REAL(8)                :: difFermiDist(2,nhex,nhex,nk)
-  REAL(8)                :: matrElementSq(2,nhex,nhex,nk)
-  REAL(8)                :: diracAvgFunc(2,nhex,nhex,nk)
+  REAL(8)                :: difFermiDist(2,2,nhex,nhex,nk)
+  REAL(8)                :: matrElementSq(2,2,nhex,nhex,nk)
+  REAL(8)                :: diracAvgFunc(2,2,nhex,nhex,nk,ne)
 
 ! working variables and parameter
-
-  REAL(8)                :: hw0
-  REAL(8), SAVE          :: pre
-
 
   REAL(8), SAVE, ALLOCATABLE :: fnk(:,:,:)  !(2,nhex,nk)
 
@@ -2312,12 +2164,11 @@ difFermiDist,matrElementSq,diracAvgFunc)
   REAL(8), PARAMETER     :: h     = 4.13D-15      !(eV-s)
   REAL(8), PARAMETER     :: ptol  =  1.D-15
 
-  INTEGER                :: k, mu, ii
+  INTEGER                :: k, mu, ii, ie
   INTEGER                :: n1, mu1, n2, mu2
 
 ! for calling some functions
   REAL(8)                :: dk, rkT
-  REAL(8)                :: diameter, tubeDiam
   REAL(8)                :: fermi, Ekk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvg, Eab, diracDelta_eps1
@@ -2337,26 +2188,18 @@ difFermiDist,matrElementSq,diracAvgFunc)
         END DO
      END DO
 
-! dielectric function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
-     diameter = tubeDiam(n,m)        !(Angstroms)
-     pre  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
-
-! sum over n1, mu1, n2, mu2 and k
-  ss0 = 0.D0
+! LOOP over n1, mu1, n2, mu2 and k
   difFermiDist = 0.D0
   matrElementSq = 0.D0
   diracAvgFunc = 0.D0
 
   DO n1 = 1, 2   ! 1 <-> valence, 2 <-> conduction
-
-     !n1 = 1
-     !n2 = 2
-     n2 = n1     ! intraband transitions
+    DO n2 = 1,2
 
      DO mu1 = 1, nhex
            DO mu2 = 1, nhex
 
-              !IF (mu1 == mu2) CYCLE
+              IF (n1 == n2 .and. mu1 == mu2) CYCLE
 
               DO k=1,nk
 
@@ -2391,13 +2234,7 @@ difFermiDist,matrElementSq,diracAvgFunc)
                     enk2p = (Enk(n2,mu2,k  )+Enk(n2,mu2,k+1))/2.D0
                  END IF
 
-! photon energy is fixed, hw = 0 eV
-                 hw0 = 0.0D0
-
 ! energy difference
-                 y1 = enk2n - enk1n - hw0
-                 y2 = enk2p - enk1p - hw0
-
                  Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
 
 ! squared optical dipole matrix element (1/Angstroms**2)
@@ -2408,37 +2245,37 @@ difFermiDist,matrElementSq,diracAvgFunc)
                  END DO
                  ! square of matrix element
                  p2   = CDABS(css)**2
-                 matrElementSq(n1,mu1,mu2,k) = sqrt(p2)
+                 matrElementSq(n1,n2,mu1,mu2,k) = sqrt(p2)
                  ! multiply by distribuion function
                  p2df = p2*(fnk(n1,mu1,k) - fnk(n2,mu2,k))
-                 difFermiDist(n1,mu1,mu2,k) = fnk(n1,mu1,k) - fnk(n2,mu2,k)
+                 difFermiDist(n1,n2,mu1,mu2,k) = fnk(n1,mu1,k) - fnk(n2,mu2,k)
 
                  ! if small p2df then skip
                  IF ( ABS(Eab) .lt. ptol ) THEN
                     IF (ABS(p2df) > ptol) STOP 'something strange'
                  ENDIF
 
-                 !IF (ABS(p2df) <= ptol) CYCLE
-
 !**********************************************************
+                DO ie = 1, ne
+                    y1 = enk2n - enk1n - hw(ie)
+                    y2 = enk2p - enk1p - hw(ie)
 
                     diracAvg = diracDelta_eps1(x1,y1,x2,y2,fwhm) ! (1/eV)
-                    !IF(diracAvg == 0.) CYCLE
-
-                    diracAvgFunc(n1,mu1,mu2,k) = diracAvg/Eab
-                    ss0(n1,mu1,mu2,k) = p2df * diracAvg/Eab  ! eV**(-3) * Angstroms**(-3)
+                    diracAvgFunc(n1,n2,mu1,mu2,k,ie) = diracAvg/Eab
+                END DO
 
               END DO
            END DO
         END DO
       END DO
+    END DO
 
-END SUBROUTINE ImagDynConductivityIntra_test
+END SUBROUTINE Func_test
 !*******************************************************************************
 !*******************************************************************************
 SUBROUTINE tbDipolXYOrt(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
 !===============================================================================
-! another version of tbDipolXY2 -> different algorithm but yields same results
+! another version of tbDipolXY -> different algorithm but yields same results
 ! xy component of optical dipole matrix element for (n,m) carbon tube
 !        Dx = < n1,mu1,rk | d/dx | n2,mu2,rk > (1/Angstroms)
 !        Dy = < n1,mu1,rk | d/dy | n2,mu2,rk > (1/Angstroms)
@@ -2601,4 +2438,3 @@ END DO
 END SUBROUTINE tbDipolXYOrt
 !*******************************************************************************
 !*******************************************************************************
-

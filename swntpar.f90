@@ -349,6 +349,14 @@ END SUBROUTINE unitVecXY
 !*******************************************************************************
 !*******************************************************************************
 SUBROUTINE printTubeClass(n,m,iunit)
+!===============================================================================
+! sends to the terminal the main information about CNT
+! ------------------------------------------------------------------------------
+! Input      :
+!  n,m           chiral vector coordinates in (a1,a2)
+! iunit          unit connected to the output file
+! Output     : none
+!===============================================================================
   IMPLICIT NONE
   INTEGER, INTENT(in)    :: n, m, iunit
   
@@ -359,6 +367,7 @@ SUBROUTINE printTubeClass(n,m,iunit)
   REAL(8)                :: diam, tubeDiam
   REAL(8)                :: Tlength, trLength
   REAL(8)                :: chTheta
+  INTEGER                :: muk11,muk22,mukp11,mukp22
   
   id      = igcd(n,m)
   idr     = igcd(2*n+m,2*m+n)
@@ -382,21 +391,37 @@ SUBROUTINE printTubeClass(n,m,iunit)
      WRITE (i,*) ' Class                : Chiral'      
   ENDIF
   
+  CALL CutLineK(n,m,muk11,muk22,mukp11,mukp22)
+  ! CutLineK gives the result assuming 0 .. N-1 range for cutting lines
+  ! in the code we use mu = 1 .. N
+  ! change the mu values according to our convention
+  muk11 = muk11 + 1
+  muk22 = muk22 + 1
+  mukp11 = mukp11 + 1
+  mukp22 = mukp22 + 1
+
 ! metallicity
   SELECT CASE (metal)
      
   CASE(0)
      IF (id == idr) THEN
-     WRITE (i,*) ' Metallicity          : Metal-1 (M0)'      
+        WRITE (i,*) ' Metallicity          : Metal-1 (M0)'
+        WRITE (i,*) ' Cutting lines corresponding to K points: ', muk11, mukp11
      ELSE
-     WRITE (i,*) ' Metallicity          : Metal-2 (M0)'      
+        WRITE (i,*) ' Metallicity          : Metal-2 (M0)'
+        WRITE (i,*) ' Cutting lines corresponding to K point: ', muk11
      END IF
      
+
   CASE(1)
      WRITE (i,*) ' Metallicity          : Mod 1 Semiconductor (S2)'
+     WRITE (i,*) ' Cutting lines corresponding to E11, E22 near K point: ', muk11, muk22
+     WRITE (i,*) ' Cutting lines corresponding to E11, E22 near Kp point: ', mukp11, mukp22
      
   CASE(2)
-     WRITE (i,*) ' Metallicity          : Mod 2 Semiconductor (S1)'      
+     WRITE (i,*) ' Metallicity          : Mod 2 Semiconductor (S1)'
+     WRITE (i,*) ' Cutting lines corresponding to E11, E22 near K point: ', muk11, muk22
+     WRITE (i,*) ' Cutting lines corresponding to E11, E22 near Kp point: ', mukp11, mukp22
      
   CASE default
      WRITE (i,*) ' invalid metallicity  : ', metal
@@ -414,4 +439,145 @@ SUBROUTINE printTubeClass(n,m,iunit)
   WRITE (i,*)      
             
 END SUBROUTINE printTubeClass
+!*******************************************************************************
+!*******************************************************************************
+SUBROUTINE CutLineK(n,m,muk11,muk22,mukp11,mukp22)
+!===============================================================================
+! calculates the indeces of the closest to the K point cutting lines
+! the analytical expressions are taken from:
+! Saito, R., et al.
+! "Cutting lines near the Fermi energy of single-wall carbon nanotubes."
+! Physical Review B 72.15 (2005): 153413.
+! ************
+! the cutting lines are counted from 0 to N-1
+! ************
+! ------------------------------------------------------------------------------
+! Input      :
+!  n,m             chiral vector coordinates in (a1,a2)
+! Output     :
+! muk11, muk22
+! Semiconducting tubes    : cutting line indeces for E11 and E22 transitions near the K point
+! Metallic tubes          : muk11 - cutting line index for Fermi energy level near K point, muk22 is put to zero
+
+! mukp11, mukp22
+! Semiconducting tubes    : cutting line indeces for E11 and E22 transitions near the K' point
+! Metallic tubes          : muk11 - cutting line index for Fermi energy level near K' point, mukp22 is put to zero
+!===============================================================================
+  IMPLICIT NONE
+  INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(out)   :: muk11, muk22, mukp11, mukp22
+
+  REAL(8), PARAMETER     :: hbar = 6.582D-4 !(eV-ps)
+  REAL(8), PARAMETER     :: pi   = 3.14159265358979D0
+
+  INTEGER                :: id, idr, igcd, metal, nhex, nHexagon
+  INTEGER                :: it1, it2, p, q
+  REAL(8)                :: T(2)
+  INTEGER                :: num, denum
+
+  id      = igcd(n,m)
+  idr     = igcd(2*n+m,2*m+n)
+  metal   = MOD(n-m,3)
+
+  nhex    = nHexagon(n,m)
+
+  CALL trVecXY(n,m,it1,it2,T)
+
+! metallic
+  IF ( metal == 0 ) THEN
+     IF (id == idr) THEN
+     ! Metal-1 CNT
+         muk11 = nhex/3
+         mukp11 = 2*nhex/3
+     ELSE
+     ! Metal-2 CNT
+        CALL solvePQeq(n,m,p,q)
+
+        num = (3*p + 2)*nhex
+        denum = -3*it2
+
+        IF (MOD(3*m/idr, 3) == 1) THEN
+            muk11 = (num - m)/denum
+        ELSEIF (MOD(3*m/idr, 3) == 2)  THEN
+            muk11 = (num + m)/denum
+        ELSE
+            WRITE(*,*) 'The eq.13 is wrong'
+        END IF
+
+        mukp11 = nhex - muk11
+     END IF
+
+     muk22  = 0
+     mukp22 = 0
+
+  END IF
+
+  IF ( MOD(nhex,3) == 1 ) THEN
+
+        muk11 = (nhex - 1)/3
+        muk22 = (nhex + 2)/3
+
+        mukp11 = nhex - (nhex - 1)/3
+        mukp22 = nhex - (nhex + 2)/3
+
+  ELSEIF ( MOD(nhex,3) == 2 ) THEN
+
+        muk11 = (nhex + 1)/3
+        muk22 = (nhex - 2)/3
+
+        mukp11 = nhex - (nhex + 1)/3
+        mukp22 = nhex - (nhex - 2)/3
+  END IF
+
+END SUBROUTINE CutLineK
+!*******************************************************************************
+!*******************************************************************************
+SUBROUTINE solvePQeq(n,m,p,q)
+!===============================================================================
+! solves the eq.(13) from:
+! Saito, R., et al.
+! "Cutting lines near the Fermi energy of single-wall carbon nanotubes."
+! Physical Review B 72.15 (2005): 153413.
+! ------------------------------------------------------------------------------
+! Input      :
+!  n,m             chiral vector coordinates in (a1,a2)
+! Output     :
+! p,q              solution
+!===============================================================================
+  IMPLICIT NONE
+  INTEGER, INTENT(in)    :: n,m
+  INTEGER, INTENT(out)   :: p,q
+
+  INTEGER                :: it1, it2, idr, igcd
+  REAL(8)                :: T(2)         ! (T(1),T(2)) -> (x,y)
+  INTEGER                :: iq, ip
+  INTEGER                :: cond
+
+  CALL trVecXY(n,m,it1,it2,T)
+  idr = igcd(2*n+m,2*m+n)
+
+  p = 0
+  q = 0
+
+  IF (MOD(3*m/idr, 3) == 1) THEN
+    cond = (-3*m + idr)/(3*idr)
+  ELSEIF (MOD(3*m/idr, 3) == 2)  THEN
+    cond = (-3*m - idr)/(3*idr)
+  ELSE
+    WRITE(*,*) 'The eq.13 is wrong'
+  END IF
+
+  !PRINT*, 'cond =', cond
+  DO ip = 0, -it2-1
+    DO iq = 0, it1-1
+
+        IF ( (it1*ip + it2*iq) == cond ) THEN
+            p = ip
+            q = iq
+        END IF
+
+    END DO
+  END DO
+
+END SUBROUTINE solvePQeq
 !*******************************************************************************
