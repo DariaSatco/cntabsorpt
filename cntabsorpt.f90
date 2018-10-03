@@ -422,79 +422,79 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-!  WRITE (*,*) '--------------------------------------------------------'
-!  WRITE (*,*) '..begin DO loop over Fermi level in range 0..2.5 eV'
-!  DO i=1,26
-!  WRITE (*,*) '--------------------------------------------------------'
-!
-!  Efermi = (i-1)*0.1D0
-!  WRITE (*,*) '--------------------------------------------------------'
-!  WRITE (*,*) '..Fermi level: ', Efermi
-!  WRITE (fermistr, 350) Efermi
-!  WRITE (thetastr, 360) INT(laser_theta/10.)
-!  WRITE (*,*) '--------------------------------------------------------'
-!
-!! ======================================================================
-!! ========================== permittivity ==============================
-!! real and imaginary parts of dielectric permittivity
-!! ======================================================================
-!
-!  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1,eps2)
-!
-!! plot eps1(hw) (Lin's) ************************
-!  OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie),eps1(ie)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
-!
-!! plot eps2(hw) ********************************
-!  OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie),eps2(ie)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
-!
-!! =======================================================================
-!! ========================== conductivity ===============================
-!! real and imaginary parts
-!! =======================================================================
-!  WRITE (*,*) '--------------------------------------------------------'
-!  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1,sigm2)
-!
-!! plot sigm1(hw) ******************************
-!  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'real part of conductivity in', TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-!
-!! plot sigm2(hw) *******************************
-!  OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
-!
-!! =======================================================================
-!! ============================ absorption ===============================
-!  WRITE (*,*) '--------------------------------------------------------'
-!  CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorpt)
-!
-!! plot absorpt(hw) *******************************
-!  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'absorption in ', TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-!
-!  END DO
-!  WRITE (*,*) '..end of DO loop over Fermi level'
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..begin DO loop over Fermi level in range 0..3.5 eV'
+  DO i=1,36
+  WRITE (*,*) '--------------------------------------------------------'
+
+  Efermi = (i-1)*0.1D0
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..Fermi level: ', Efermi
+  WRITE (fermistr, 350) Efermi
+  WRITE (thetastr, 360) INT(laser_theta/10.)
+  WRITE (*,*) '--------------------------------------------------------'
+
+! ======================================================================
+! ========================== permittivity ==============================
+! real and imaginary parts of dielectric permittivity
+! ======================================================================
+
+  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1,eps2)
+
+! plot eps1(hw) (Lin's) ************************
+  OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie),eps1(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
+
+! plot eps2(hw) ********************************
+  OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie),eps2(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
+
+! =======================================================================
+! ========================== conductivity ===============================
+! real and imaginary parts
+! =======================================================================
+  WRITE (*,*) '--------------------------------------------------------'
+  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1,sigm2)
+
+! plot sigm1(hw) ******************************
+  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'real part of conductivity in', TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
+
+! plot sigm2(hw) *******************************
+  OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
+
+! =======================================================================
+! ============================ absorption ===============================
+  WRITE (*,*) '--------------------------------------------------------'
+  CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorpt)
+
+! plot absorpt(hw) *******************************
+  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'absorption in ', TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
+
+  END DO
+  WRITE (*,*) '..end of DO loop over Fermi level'
 
 ! ***********************************************************************
 ! END OF FERMI LEVEL LOOP
@@ -640,72 +640,72 @@ PROGRAM cntabsorpt
 ! -----------------------------------------------------------------------------------------------
 ! ======================= explore contributions from different cutting lines ====================
 ! -----------------------------------------------------------------------------------------------
-
-  diameter = tubeDiam(n,m)        !(Angstroms)
-  area = pi*(diameter/2.D0)**2    !(Angstroms**2)
-
-! dielectric function prefactor (eV**3 Angstroms**3)
-! --------------------------------------------------
-! see for the prefactor expression paper:
-! Sanders, G. D., et al.
-! "Resonant coherent phonon spectroscopy of single-walled carbon nanotubes."
-! Physical Review B 79.20 (2009): 205434.
-  prediel  = 8.D0*pi*e2*hbarm**2/area !(eV**3 Angstroms**3)
-
-! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
-  precond  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
-
-  WRITE (*,*) '--------------------------------------------------------'
-
-! number of transitions mu1,mu2
-  mn = 6
-
-  ALLOCATE(mu1_val(mn))
-  ALLOCATE(mu2_val(mn))
-  ALLOCATE(absorptPart(mn,nhw_laser))
-  ALLOCATE(eps0(nhw_laser))
-  ALLOCATE(reint(nhw_laser))
-  ALLOCATE(imagint(nhw_laser))
-
-  n1 = 2
-  n2 = 2
-  mu1_val = (/ 11, 12, 12, 13, 10, 14 /)
-  mu2_val = (/ 10, 11, 13, 14, 9, 15 /)
-
-  eps0(:) = ebg
-  reint = 0.D0
-  imagint = 0.D0
-
-  DO i = 1,mn
-    mu1 = mu1_val(i)
-    mu2 = mu2_val(i)
-
-CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,reint,imagint)
-
-    DO ie = 1, nhw_laser
-        IF (hw_laser(ie) .le. ptol) THEN
-            eps1(ie) = eps0(ie) + prediel*imagint(ie)/1.D-3
-            eps2(ie) = prediel*reint(ie)/1.D-3
-        ELSE
-            eps1(ie) = eps0(ie) + prediel*imagint(ie)/hw_laser(ie)
-            eps2(ie) = prediel*reint(ie)/hw_laser(ie)
-        END IF
-    END DO
-
-    sigm1 = precond*reint
-    sigm2 = -precond*imagint
-
-    CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorptPart(i,1:nhw_laser))
-
-  END DO
-
-  ! plot absorptPart(hw) *******************************
-  OPEN(unit=22,file='tube.absorptPart.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), absorptPart(1:mn,ie)/(e2/h)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.xyy.'//outfile
+!
+!  diameter = tubeDiam(n,m)        !(Angstroms)
+!  area = pi*(diameter/2.D0)**2    !(Angstroms**2)
+!
+!! dielectric function prefactor (eV**3 Angstroms**3)
+!! --------------------------------------------------
+!! see for the prefactor expression paper:
+!! Sanders, G. D., et al.
+!! "Resonant coherent phonon spectroscopy of single-walled carbon nanotubes."
+!! Physical Review B 79.20 (2009): 205434.
+!  prediel  = 8.D0*pi*e2*hbarm**2/area !(eV**3 Angstroms**3)
+!
+!! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
+!  precond  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
+!
+!  WRITE (*,*) '--------------------------------------------------------'
+!
+!! number of transitions mu1,mu2
+!  mn = 6
+!
+!  ALLOCATE(mu1_val(mn))
+!  ALLOCATE(mu2_val(mn))
+!  ALLOCATE(absorptPart(mn,nhw_laser))
+!  ALLOCATE(eps0(nhw_laser))
+!  ALLOCATE(reint(nhw_laser))
+!  ALLOCATE(imagint(nhw_laser))
+!
+!  n1 = 2
+!  n2 = 2
+!  mu1_val = (/ 11, 12, 12, 13, 10, 14 /)
+!  mu2_val = (/ 10, 11, 13, 14, 9, 15 /)
+!
+!  eps0(:) = ebg
+!  reint = 0.D0
+!  imagint = 0.D0
+!
+!  DO i = 1,mn
+!    mu1 = mu1_val(i)
+!    mu2 = mu2_val(i)
+!
+!CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,reint,imagint)
+!
+!    DO ie = 1, nhw_laser
+!        IF (hw_laser(ie) .le. ptol) THEN
+!            eps1(ie) = eps0(ie) + prediel*imagint(ie)/1.D-3
+!            eps2(ie) = prediel*reint(ie)/1.D-3
+!        ELSE
+!            eps1(ie) = eps0(ie) + prediel*imagint(ie)/hw_laser(ie)
+!            eps2(ie) = prediel*reint(ie)/hw_laser(ie)
+!        END IF
+!    END DO
+!
+!    sigm1 = precond*reint
+!    sigm2 = -precond*imagint
+!
+!    CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorptPart(i,1:nhw_laser))
+!
+!  END DO
+!
+!  ! plot absorptPart(hw) *******************************
+!  OPEN(unit=22,file='tube.absorptPart.xyy.'//outfile)
+!  DO ie = 1, nhw_laser
+!     WRITE(22,1001) hw_laser(ie), absorptPart(1:mn,ie)/(e2/h)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.xyy.'//outfile
 
 ! -----------------------------------------------------------------------------------------------
 ! =================== END of exploring contributions from different cutting lines ===============
