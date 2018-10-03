@@ -942,11 +942,11 @@ END SUBROUTINE indexx
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!! Added by Daria Satco !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-REAL(8) FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
+REAL(8) FUNCTION diracDelta_im(x1,y1,x2,y2,fwhm)
 !===============================================================================
 ! Approximate Dirac delta function
 !-------------------------------------------------------------------------------
-!..diracDelta=Int( f(alpha+beta*x), from y1 to y2 )/(y2-y1)
+!..diracDelta_im = Int( f(alpha+beta*x), from y1 to y2 )/(y2-y1)
 !..where y1=alpha+beta*x1 and y2=alpha+beta*x2
 !.. f = x/( x**2 + fwhm**2 )
 !===============================================================================
@@ -962,15 +962,15 @@ REAL(8) FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
   bb = y2 - y1
 
   IF (ABS(bb/dk) < tol) THEN
-      diracDelta_eps1 = (y2/(y2**2 + fwhm**2) + y1/(y1**2 + fwhm**2))/2
+      diracDelta_im = (y2/(y2**2 + fwhm**2) + y1/(y1**2 + fwhm**2))/2
   ELSE
       a1 = y1**2 + fwhm**2
       a2 = y2**2 + fwhm**2
-      diracDelta_eps1 = DLOG(ABS(a2)/ABS(a1)) / (2*bb)
+      diracDelta_im = DLOG(ABS(a2)/ABS(a1)) / (2*bb)
   END IF
 
   RETURN
 
-END FUNCTION diracDelta_eps1
+END FUNCTION diracDelta_im
 !*******************************************************************
 !*******************************************************************

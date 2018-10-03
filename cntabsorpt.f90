@@ -82,6 +82,8 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE    :: alpha(:)        !(nhw_laser)
   REAL(8), ALLOCATABLE    :: sigm1(:)        !(nhw_laser)
   REAL(8), ALLOCATABLE    :: sigm2(:)        !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: sigm1_intra(:)  !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: sigm1_inter(:)  !(nhw_laser)
   REAL(8), ALLOCATABLE    :: sigm2_intra(:)  !(nhw_laser)
   REAL(8), ALLOCATABLE    :: sigm2_inter(:)  !(nhw_laser)
   REAL(8), ALLOCATABLE    :: absorpt(:)      !(nhw_laser)
@@ -369,18 +371,26 @@ PROGRAM cntabsorpt
 !----------------------------------------------------------------------
 ! allocate storage
   ALLOCATE(hw_laser(nhw_laser))
-  ALLOCATE(eps2a(nhw_laser))
-  ALLOCATE(eps2a1(nhw_laser))
+
   ALLOCATE(eps1a(nhw_laser))
+  ALLOCATE(eps2a(nhw_laser))
+
   ALLOCATE(eps1a1(nhw_laser))
-  ALLOCATE(alpha(nhw_laser))
-  ALLOCATE(eelspec(nhw_laser))
+  ALLOCATE(eps2a1(nhw_laser))
+
   ALLOCATE(sigm1(nhw_laser))
   ALLOCATE(sigm2(nhw_laser))
-  ALLOCATE(sigm2_intra(nhw_laser))
-  ALLOCATE(sigm2_inter(nhw_laser))
+
+  ALLOCATE(alpha(nhw_laser))
   ALLOCATE(absorpt(nhw_laser))
+  ALLOCATE(eelspec(nhw_laser))
+
+  ALLOCATE(sigm1_intra(nhw_laser))
+  ALLOCATE(sigm2_intra(nhw_laser))
+  ALLOCATE(sigm1_inter(nhw_laser))
+  ALLOCATE(sigm2_inter(nhw_laser))
   
+
   WRITE (*,*) '====================================================='
   WRITE (*,*) '..Real and Imaginary part of dielectric function'
   WRITE (*,*) '  absorption coefficient (1/cm), conductivity (e^2/h)'
@@ -421,10 +431,10 @@ PROGRAM cntabsorpt
 !
 !! ======================================================================
 !! ========================== permittivity ==============================
-!! real part of dielectric permittivity
+!! real and imaginary parts of dielectric permittivity
 !! ======================================================================
 !
-!  CALL realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
+!  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a,eps2a)
 !
 !! plot eps1(hw) (Lin's) ************************
 !  OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
@@ -434,22 +444,6 @@ PROGRAM cntabsorpt
 !  CLOSE(unit=22)
 !  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
 !
-!
-!  CALL realDielEn_met2(nhw_laser,ebg, hw_laser,eps2a,eps1a1)   !Kramers-Kronig
-!
-!! plot eps1(hw) (Kramers-Kronig) ****************
-!  OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie),eps1a1(ie)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'real part of dielectric function in tube.eps1kk.xyy.'//outfile
-!
-!! imaginary part of dielectric permittivity
-!! =======================================================================
-!  WRITE (*,*) '--------------------------------------------------------'
-!  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)  !From Lin's paper
-!
 !! plot eps2(hw) ********************************
 !  OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
 !  DO ie = 1, nhw_laser
@@ -458,22 +452,12 @@ PROGRAM cntabsorpt
 !  CLOSE(unit=22)
 !  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
 !
-!
-!  CALL imagDielEn_met2(nhw_laser,hw_laser,eps1a,eps2a1)  !Kramers-Kronig
-!
-!! plot eps2(hw) (Kramers-Kronig) ***************
-!  OPEN(unit=22,file='tube.eps2kk.xyy.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie),eps2a1(ie)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
 !! =======================================================================
 !! ========================== conductivity ===============================
-!! real part
+!! real and imaginary parts
 !! =======================================================================
 !  WRITE (*,*) '--------------------------------------------------------'
-!  CALL RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1)
+!  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1,sigm2)
 !
 !! plot sigm1(hw) ******************************
 !  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
@@ -482,11 +466,6 @@ PROGRAM cntabsorpt
 !  ENDDO
 !  CLOSE(unit=22)
 !  WRITE(*,*) 'real part of conductivity in', TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-!
-!! imaginary part
-!! =======================================================================
-!  WRITE (*,*) '--------------------------------------------------------'
-!  CALL ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm2)
 !
 !! plot sigm2(hw) *******************************
 !  OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
@@ -518,34 +497,20 @@ PROGRAM cntabsorpt
 
 ! ======================================================================
 ! ========================== permittivity ==============================
-! real part of dielectric permittivity
+! real and imaginary parts of dielectric permittivity
 ! ======================================================================
 
-  CALL realDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a) !From Lin's paper
+  WRITE (*,*) '--------------------------------------------------------'
 
-! plot eps1(hw) (Lin's) ************************
+  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a,eps2a)
+
+! plot eps1(hw) *********************************
   OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps1a(ie)
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
-
-
-  CALL realDielEn_met2(nhw_laser,ebg, hw_laser,eps2a,eps1a1)   !Kramers-Kronig
-
-! plot eps1(hw) (Kramers-Kronig) ****************
-  OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps1a1(ie)
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'real part of dielectric function in tube.eps1kk.xyy.'//outfile
-
-! imaginary part of dielectric permittivity
-! =======================================================================
-  WRITE (*,*) '--------------------------------------------------------'
-  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)  !From Lin's paper
 
 ! plot eps2(hw) ********************************
   OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
@@ -556,7 +521,15 @@ PROGRAM cntabsorpt
   WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
 
 
-  CALL imagDielEn_met2(nhw_laser,hw_laser,eps1a,eps2a1)  !Kramers-Kronig
+  CALL DielPermittivityKrKr(nhw_laser,ebg,hw_laser,eps1a,eps2a,eps1a1,eps2a1)   !Kramers-Kronig
+
+! plot eps1(hw) (Kramers-Kronig) ****************
+  OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie),eps1a1(ie)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'real part of dielectric function in tube.eps1kk.xyy.'//outfile
 
 ! plot eps2(hw) (Kramers-Kronig) ***************
   OPEN(unit=22,file='tube.eps2kk.xyy.'//outfile)
@@ -599,10 +572,10 @@ PROGRAM cntabsorpt
 
 ! =======================================================================
 ! ========================== conductivity ===============================
-! real part
+! real and imaginary parts part
 ! =======================================================================
   WRITE (*,*) '--------------------------------------------------------'
-  CALL RealDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1)
+  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1,sigm2)
 
 ! plot sigm1(hw) ******************************
   OPEN(unit=22,file='tube.sigm1.xyy.'//outfile)
@@ -611,11 +584,6 @@ PROGRAM cntabsorpt
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'real part of conductivity in tube.sigm1.xyy.'//outfile
-
-! imaginary part
-! =======================================================================
-  WRITE (*,*) '--------------------------------------------------------'
-  CALL ImagDynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm2)
 
 ! plot sigm2(hw) *******************************
   OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
@@ -628,7 +596,7 @@ PROGRAM cntabsorpt
 ! imaginary part of intraband conductivity
 ! =======================================================================
   WRITE (*,*) '--------------------------------------------------------'
-  CALL ImagDynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm2_intra)
+  CALL DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1_intra,sigm2_intra)
 
 ! plot sigm2_intra(hw) *******************************
   OPEN(unit=22,file='tube.sigm2_intra.xyy.'//outfile)
@@ -640,7 +608,7 @@ PROGRAM cntabsorpt
 
 ! imaginary part of interband conductivity
 ! =======================================================================
-  CALL ImagDynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm2_inter)
+  CALL DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1_inter,sigm2_inter)
 
 ! plot sigm2_inter(hw) *******************************
   OPEN(unit=22,file='tube.sigm2_inter.xyy.'//outfile)
@@ -667,23 +635,23 @@ PROGRAM cntabsorpt
 ! ============= part of code to check the calculations ================================
 ! *************** please, remove it later *********************************************
 !
- WRITE (*,*) '====================================================='
- WRITE (*,*) '..test under integral function'
-
- ALLOCATE(difFermiDisT(2,2,nhex,nhex,nk))
- ALLOCATE(matrElementSq(2,2,nhex,nhex,nk))
- ALLOCATE(diracAvgFunc(2,2,nhex,nhex,nk,nhw_laser))
-
- CALL Func_test(nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,difFermiDist, &
- matrElementSq,diracAvgFunc)
-
-   max_position = maxloc(diracAvgFunc)
-   min_position = minloc(diracAvgFunc)
-
-   PRINT*, 'maximum at', max_position
-   PRINT*, 'minimum at', min_position
-
-   PRINT*, 'max hw', hw_laser(max_position(4)), 'min hw',  hw_laser(min_position(4))
+! WRITE (*,*) '====================================================='
+! WRITE (*,*) '..test under integral function'
+!
+! ALLOCATE(difFermiDisT(2,2,nhex,nhex,nk))
+! ALLOCATE(matrElementSq(2,2,nhex,nhex,nk))
+! ALLOCATE(diracAvgFunc(2,2,nhex,nhex,nk,nhw_laser))
+!
+! CALL Func_test(nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,difFermiDist, &
+! matrElementSq,diracAvgFunc)
+!
+!   max_position = maxloc(diracAvgFunc)
+!   min_position = minloc(diracAvgFunc)
+!
+!   PRINT*, 'maximum at', max_position
+!   PRINT*, 'minimum at', min_position
+!
+!   PRINT*, 'max hw', hw_laser(max_position(4)), 'min hw',  hw_laser(min_position(4))
 
 ! OPEN(unit=22,file='tube.test_max.xyy.'//outfile)
 ! DO k = 1, nk
@@ -705,7 +673,7 @@ PROGRAM cntabsorpt
 ! CLOSE(unit=22)
 ! WRITE(*,*) 'test min in file tube.test_min.xyy.'//outfile
 
- DEALLOCATE(difFermiDist,matrElementSq,diracAvgFunc)
+! DEALLOCATE(difFermiDist,matrElementSq,diracAvgFunc)
 
 ! ---------------------------------------------------------
 ! check convergence of the result according to dk chosen
