@@ -32,11 +32,12 @@
 ! - FUNCTION gy (cg, cg1, cg3, cg5, cg7, cg9, cg11, cg13)
 ! - FUNCTION gz (cg, cg1, cg3, cg5, cg7, cg9, cg11, cg13)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! - SUBROUTINE DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fwhm,ne,hw,eps1,eps2)
 ! - SUBROUTINE DielPermittivityKrKr(ne,ebg,hw,eps1in,eps2in,eps1out,eps2out)
 ! - SUBROUTINE EELS(ne,eps1,eps2,eelspec)
+! - SUBROUTINE Absorption(ne,eps1,eps2,sigm1,sigm2,absorpt)
 ! - SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1,sigm2)
 ! - SUBROUTINE DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1,sigm2)
 ! - SUBROUTINE DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1,sigm2)
@@ -59,7 +60,7 @@ SUBROUTINE polVector(theta,epol)
   REAL(8), INTENT(in)    :: theta
 
 ! output variable
-  REAL(8),INTENT(out) :: epol(3)
+  REAL(8),INTENT(out)    :: epol(3)
       
 ! working variable
   REAL(8)                :: angle

@@ -5,8 +5,10 @@
 ! Purpose      :
 ! Library to generate important nanotube parameters
 !-------------------------------------------------------------------------------
-! Author       : ART Nugraha (nugraha@flex.phys.tohoku.ac.jp)
-! Latest Vers. : 2012.11.05
+! Authors      :
+! - ART Nugraha (nugraha@flex.phys.tohoku.ac.jp)
+! - Daria Satco  (dasha.shatco@gmail.com)
+! Latest Vers. : 2018.10.02
 !-------------------------------------------------------------------------------
 ! Reference    :
 ! Physical Properties of Carbon Nanotubes
@@ -22,6 +24,11 @@
 ! - SUBROUTINE trVecXY(n,m,it1,it2,T)
 ! - SUBROUTINE unitVecXY(a1,a2)
 ! - SUBROUTINE printTubeClass(n,m,iunit)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! - SUBROUTINE CutLineK(n,m,muk11,muk22,mukp11,mukp22)
+! - SUBROUTINE solvePQeq(n,m,p,q)
 !*******************************************************************************
 !*******************************************************************************
 INTEGER FUNCTION nHexagon(n,m)

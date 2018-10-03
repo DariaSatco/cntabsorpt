@@ -32,8 +32,10 @@
 ! - SUBROUTINE ode2(vector,method,nvar,t1,t2,eps,h1,derivs,maxstp,nstp,hnex)
 ! - SUBROUTINE rkqs(y,dvdt,n,x,htry,eps,yscal,hdid,hnext,derivs)
 ! - SUBROUTINE rkck(y,dvdt,n,x,h,yout,yerr,derivs)
-!!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! - FUNCTION diracDelta_eps1(x1,y1,x2,y2,fwhm)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!! Daria Satco added (autumn 2018) !!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! - FUNCTION diracDelta_im(x1,y1,x2,y2,fwhm)
 !*******************************************************************************
 !*******************************************************************************
 INTEGER FUNCTION igcd(n1,n2)

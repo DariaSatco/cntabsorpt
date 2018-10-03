@@ -33,8 +33,10 @@ PROGRAM cntabsorpt
   REAL(8), PARAMETER     :: hbar  = 6.582D-4 !(eV-ps)
   REAL(8), PARAMETER     :: h     = 4.13D-15 !(eV-s)
   REAL(8), PARAMETER     :: e2    = 14.4     !(eV-A)
+  REAL(8), PARAMETER     :: hbarm =  7.62    !(eV-A**2)  hbarm = h^2 / m
   REAL(8), PARAMETER     :: hbarc = 1.97D-5  !(eV cm)
   REAL(8), PARAMETER     :: hbarvfermi = 6.582119 !(eV-A) !hbar*vfermi, vfermi = 10**6 m/s
+  REAL(8), PARAMETER     :: ptol  =  1.D-15
 !-------------------------------------------------------------------------------
 ! variables for calling tube structure function
   INTEGER                :: n, m, nHexagon
@@ -74,10 +76,10 @@ PROGRAM cntabsorpt
   REAL(8)                 :: epol(3)
 
   REAL(8), ALLOCATABLE    :: hw_laser(:)     !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eps2a(:)        !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eps2a1(:)       !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eps1a(:)        !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eps1a1(:)       !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: eps2(:)        !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: eps2kk(:)       !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: eps1(:)        !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: eps1kk(:)       !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eelspec(:)      !(nhw_laser)
   REAL(8), ALLOCATABLE    :: alpha(:)        !(nhw_laser)
   REAL(8), ALLOCATABLE    :: sigm1(:)        !(nhw_laser)
@@ -100,8 +102,11 @@ PROGRAM cntabsorpt
   INTEGER                :: max_position(6), min_position(6)
 
   REAL                   :: divergence(9), kCoef(10), maxAbsDif(9)
-  INTEGER                :: i
+  INTEGER                :: i, mn
   REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
+  REAL(8)                :: diameter, area, prediel, precond, tubeDiam
+  INTEGER, ALLOCATABLE   :: mu1_val(:), mu2_val(:)
+  REAL(8), ALLOCATABLE   :: absorptPart(:,:), eps0(:), reint(:), imagint(:)
 
 !*************************************************************
 !!!!!!!!!!!!!!!!!!!!!! MAIN PROGRAM !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -372,11 +377,11 @@ PROGRAM cntabsorpt
 ! allocate storage
   ALLOCATE(hw_laser(nhw_laser))
 
-  ALLOCATE(eps1a(nhw_laser))
-  ALLOCATE(eps2a(nhw_laser))
+  ALLOCATE(eps1(nhw_laser))
+  ALLOCATE(eps2(nhw_laser))
 
-  ALLOCATE(eps1a1(nhw_laser))
-  ALLOCATE(eps2a1(nhw_laser))
+  ALLOCATE(eps1kk(nhw_laser))
+  ALLOCATE(eps2kk(nhw_laser))
 
   ALLOCATE(sigm1(nhw_laser))
   ALLOCATE(sigm2(nhw_laser))
@@ -434,12 +439,12 @@ PROGRAM cntabsorpt
 !! real and imaginary parts of dielectric permittivity
 !! ======================================================================
 !
-!  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a,eps2a)
+!  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1,eps2)
 !
 !! plot eps1(hw) (Lin's) ************************
 !  OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
 !  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie),eps1a(ie)
+!     WRITE(22,1001) hw_laser(ie),eps1(ie)
 !  ENDDO
 !  CLOSE(unit=22)
 !  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
@@ -447,7 +452,7 @@ PROGRAM cntabsorpt
 !! plot eps2(hw) ********************************
 !  OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
 !  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie),eps2a(ie)
+!     WRITE(22,1001) hw_laser(ie),eps2(ie)
 !  ENDDO
 !  CLOSE(unit=22)
 !  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
@@ -478,7 +483,7 @@ PROGRAM cntabsorpt
 !! =======================================================================
 !! ============================ absorption ===============================
 !  WRITE (*,*) '--------------------------------------------------------'
-!  CALL Absorption(nhw_laser,eps1a,eps2a,sigm1,sigm2,absorpt)
+!  CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorpt)
 !
 !! plot absorpt(hw) *******************************
 !  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
@@ -502,12 +507,12 @@ PROGRAM cntabsorpt
 
   WRITE (*,*) '--------------------------------------------------------'
 
-  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1a,eps2a)
+  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1,eps2)
 
 ! plot eps1(hw) *********************************
   OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
   DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps1a(ie)
+     WRITE(22,1001) hw_laser(ie),eps1(ie)
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
@@ -515,29 +520,29 @@ PROGRAM cntabsorpt
 ! plot eps2(hw) ********************************
   OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
   DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps2a(ie)
+     WRITE(22,1001) hw_laser(ie),eps2(ie)
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
 
 
-  CALL DielPermittivityKrKr(nhw_laser,ebg,hw_laser,eps1a,eps2a,eps1a1,eps2a1)   !Kramers-Kronig
+  CALL DielPermittivityKrKr(nhw_laser,ebg,hw_laser,eps1,eps2,eps1kk,eps2kk)   !Kramers-Kronig
 
 ! plot eps1(hw) (Kramers-Kronig) ****************
   OPEN(unit=22,file='tube.eps1kk.xyy.'//outfile)
   DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps1a1(ie)
+     WRITE(22,1001) hw_laser(ie),eps1kk(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'real part of dielectric function in tube.eps1kk.xyy.'//outfile
+  WRITE(*,*) 'Kramers-Kronig real part of dielectric function in tube.eps1kk.xyy.'//outfile
 
 ! plot eps2(hw) (Kramers-Kronig) ***************
   OPEN(unit=22,file='tube.eps2kk.xyy.'//outfile)
   DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie),eps2a1(ie)
+     WRITE(22,1001) hw_laser(ie),eps2kk(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
+  WRITE(*,*) 'Kramers-Kronig imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
 
 ! =======================================================================
 ! ======================= absorption coefficient ========================
@@ -545,7 +550,7 @@ PROGRAM cntabsorpt
 ! =======================================================================
 
   WRITE (*,*) '--------------------------------------------------------'
-  CALL imagDielAlpha(nhw_laser,hw_laser,eps2a,refrac,alpha)
+  CALL imagDielAlpha(nhw_laser,hw_laser,eps2,refrac,alpha)
 
 ! plot absorption alpha(hw) ********************
   OPEN(unit=22,file='tube.alpha.xyy.'//outfile)
@@ -560,7 +565,7 @@ PROGRAM cntabsorpt
 ! eels spectra
 ! =======================================================================
   WRITE (*,*) '--------------------------------------------------------'
-  CALL EELS(nhw_laser,eps1a,eps2a,eelspec)
+  CALL EELS(nhw_laser,eps1,eps2,eelspec)
 
 ! plot eels(hw) *******************************
   OPEN(unit=22,file='tube.eels.xyy.'//outfile)
@@ -620,8 +625,9 @@ PROGRAM cntabsorpt
 
 ! =======================================================================
 ! ============================ absorption ===============================
+! =======================================================================
   WRITE (*,*) '--------------------------------------------------------'
-  CALL Absorption(nhw_laser,eps1a,eps2a,sigm1,sigm2,absorpt)
+  CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorpt)
 
 ! plot absorpt(hw) *******************************
   OPEN(unit=22,file='tube.absorpt.xyy.'//outfile)
@@ -629,8 +635,81 @@ PROGRAM cntabsorpt
      WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'absorption in tube.sigm2_inter.xyy.'//outfile
+  WRITE(*,*) 'absorption in tube.absorpt.xyy.'//outfile
 
+! -----------------------------------------------------------------------------------------------
+! ======================= explore contributions from different cutting lines ====================
+! -----------------------------------------------------------------------------------------------
+
+  diameter = tubeDiam(n,m)        !(Angstroms)
+  area = pi*(diameter/2.D0)**2    !(Angstroms**2)
+
+! dielectric function prefactor (eV**3 Angstroms**3)
+! --------------------------------------------------
+! see for the prefactor expression paper:
+! Sanders, G. D., et al.
+! "Resonant coherent phonon spectroscopy of single-walled carbon nanotubes."
+! Physical Review B 79.20 (2009): 205434.
+  prediel  = 8.D0*pi*e2*hbarm**2/area !(eV**3 Angstroms**3)
+
+! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
+  precond  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
+
+  WRITE (*,*) '--------------------------------------------------------'
+
+! number of transitions mu1,mu2
+  mn = 6
+
+  ALLOCATE(mu1_val(mn))
+  ALLOCATE(mu2_val(mn))
+  ALLOCATE(absorptPart(mn,nhw_laser))
+  ALLOCATE(eps0(nhw_laser))
+  ALLOCATE(reint(nhw_laser))
+  ALLOCATE(imagint(nhw_laser))
+
+  n1 = 2
+  n2 = 2
+  mu1_val = (/ 11, 12, 12, 13, 10, 14 /)
+  mu2_val = (/ 10, 11, 13, 14, 9, 15 /)
+
+  eps0(:) = ebg
+  reint = 0.D0
+  imagint = 0.D0
+
+  DO i = 1,mn
+    mu1 = mu1_val(i)
+    mu2 = mu2_val(i)
+
+CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,reint,imagint)
+
+    DO ie = 1, nhw_laser
+        IF (hw_laser(ie) .le. ptol) THEN
+            eps1(ie) = eps0(ie) + prediel*imagint(ie)/1.D-3
+            eps2(ie) = prediel*reint(ie)/1.D-3
+        ELSE
+            eps1(ie) = eps0(ie) + prediel*imagint(ie)/hw_laser(ie)
+            eps2(ie) = prediel*reint(ie)/hw_laser(ie)
+        END IF
+    END DO
+
+    sigm1 = precond*reint
+    sigm2 = -precond*imagint
+
+    CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorptPart(i,1:nhw_laser))
+
+  END DO
+
+  ! plot absorptPart(hw) *******************************
+  OPEN(unit=22,file='tube.absorptPart.xyy.'//outfile)
+  DO ie = 1, nhw_laser
+     WRITE(22,1001) hw_laser(ie), absorptPart(1:mn,ie)/(e2/h)
+  ENDDO
+  CLOSE(unit=22)
+  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.xyy.'//outfile
+
+! -----------------------------------------------------------------------------------------------
+! =================== END of exploring contributions from different cutting lines ===============
+! -----------------------------------------------------------------------------------------------
 
 ! ============= part of code to check the calculations ================================
 ! *************** please, remove it later *********************************************
@@ -734,9 +813,9 @@ PROGRAM cntabsorpt
 !     END DO
 !  END DO
 !
-!  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2a)
+!  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2)
 !
-!  eps2aii(i,1:nhw_laser) = eps2a(1:nhw_laser)
+!  eps2aii(i,1:nhw_laser) = eps2(1:nhw_laser)
 !
 !  DEALLOCATE(rka)
 !  DEALLOCATE(Enk)
