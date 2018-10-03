@@ -442,20 +442,20 @@ PROGRAM cntabsorpt
   CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1,eps2)
 
 ! plot eps1(hw) (Lin's) ************************
-  OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.eps1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps1(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
+  WRITE(*,*) 'real part of dielectric function in', TRIM(path)//'tube.eps1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
 
 ! plot eps2(hw) ********************************
-  OPEN(unit=22,file='tube.eps2.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.eps2.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps2(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
+  WRITE(*,*) 'imaginary part of dielectric function in', TRIM(path)//'tube.eps2.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
 
 ! =======================================================================
 ! ========================== conductivity ===============================
@@ -473,12 +473,12 @@ PROGRAM cntabsorpt
   WRITE(*,*) 'real part of conductivity in', TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
 
 ! plot sigm2(hw) *******************************
-  OPEN(unit=22,file='tube.sigm2.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.sigm2.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
+  WRITE(*,*) 'imaginary part of conductivity in', TRIM(path)//'tube.sigm2.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
 
 ! =======================================================================
 ! ============================ absorption ===============================
