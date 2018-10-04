@@ -489,7 +489,7 @@ SUBROUTINE piHamOvlp(n,m,rk,mu,H,S)
   css   = 0.D0
   DO ivec = 1, 6
      CALL tbAtomHamOvlp(n,m, iatom,ivec,nn, ham,ovlp)      
-     CALL phij(n,m, iatom,ivec,nn,rk,mu,phi)
+     CALL phij(n,m,iatom,ivec,nn,rk,mu,phi)
      expphi = CDEXP(ci*phi)
      csh    = csh+expphi*ham
      css    = css+expphi*ovlp      
@@ -504,7 +504,7 @@ SUBROUTINE piHamOvlp(n,m,rk,mu,H,S)
   css   = 0.D0
   DO ivec = 1, 6
      CALL tbAtomHamOvlp(n,m,iatom,ivec,nn,ham,ovlp)      
-     CALL phij(n,m, iatom,ivec,nn,rk,mu,phi)
+     CALL phij(n,m,iatom,ivec,nn,rk,mu,phi)
      expphi = CDEXP(ci*phi)
      csh    = csh + expphi*ham
      css    = css + expphi*ovlp      

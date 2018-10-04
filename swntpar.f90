@@ -401,11 +401,7 @@ SUBROUTINE printTubeClass(n,m,iunit)
   CALL CutLineK(n,m,muk11,muk22,mukp11,mukp22)
   ! CutLineK gives the result assuming 0 .. N-1 range for cutting lines
   ! in the code we use mu = 1 .. N
-  ! change the mu values according to our convention
-  muk11 = muk11 + 1
-  muk22 = muk22 + 1
-  mukp11 = mukp11 + 1
-  mukp22 = mukp22 + 1
+  ! the point N in our calculations is equal to 0 point in another notation
 
 ! metallicity
   SELECT CASE (metal)
@@ -519,22 +515,25 @@ SUBROUTINE CutLineK(n,m,muk11,muk22,mukp11,mukp22)
 
   END IF
 
-  IF ( MOD(nhex,3) == 1 ) THEN
 
-        muk11 = (nhex - 1)/3
-        muk22 = (nhex + 2)/3
+  IF ( metal == 1 .or. metal == 2 ) THEN
+      IF ( MOD(nhex,3) == 1 ) THEN
 
-        mukp11 = nhex - (nhex - 1)/3
-        mukp22 = nhex - (nhex + 2)/3
+            muk11 = (nhex - 1)/3
+            muk22 = (nhex + 2)/3
 
-  ELSEIF ( MOD(nhex,3) == 2 ) THEN
+            mukp11 = nhex - (nhex - 1)/3
+            mukp22 = nhex - (nhex + 2)/3
 
-        muk11 = (nhex + 1)/3
-        muk22 = (nhex - 2)/3
+      ELSEIF ( MOD(nhex,3) == 2 ) THEN
 
-        mukp11 = nhex - (nhex + 1)/3
-        mukp22 = nhex - (nhex - 2)/3
-  END IF
+            muk11 = (nhex + 1)/3
+            muk22 = (nhex - 2)/3
+
+            mukp11 = nhex - (nhex + 1)/3
+            mukp22 = nhex - (nhex - 2)/3
+      END IF
+  ENDIF
 
 END SUBROUTINE CutLineK
 !*******************************************************************************

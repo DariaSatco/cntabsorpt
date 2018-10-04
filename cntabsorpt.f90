@@ -99,15 +99,15 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE   :: difFermiDist(:,:,:,:,:)
   REAL(8), ALLOCATABLE   :: matrElementSq(:,:,:,:,:)
   REAL(8), ALLOCATABLE   :: diracAvgFunc(:,:,:,:,:,:)
-  INTEGER                :: max_position(6), min_position(6)
+  INTEGER                :: max_position(3), min_position(3)
 
   REAL                   :: divergence(9), kCoef(10), maxAbsDif(9)
-  INTEGER                :: i, mn, j
+  INTEGER                :: i, mn, j, mnj
   REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
   REAL(8)                :: diameter, area, prediel, precond, tubeDiam
   INTEGER, ALLOCATABLE   :: mu1_val(:), mu2_val(:)
   REAL(8), ALLOCATABLE   :: absorptPart(:,:,:), eps1Part(:,:,:), eps2Part(:,:,:), sigm1Part(:,:,:), sigm2Part(:,:,:)
-  REAL(8), ALLOCATABLE   :: eps0(:), reint(:), imagint(:)
+  REAL(8), ALLOCATABLE   :: eps0(:), reint(:), imagint(:), fnk(:,:,:)
 
 !*************************************************************
 !!!!!!!!!!!!!!!!!!!!!! MAIN PROGRAM !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -233,6 +233,8 @@ PROGRAM cntabsorpt
 
 ! compute energy bands En(k) (eV)
 ! NOTE: cutting lines are always taken from 1 to N
+! the notations mu = 0..N-1 and mu = 1..N are consistent
+! when 0 <-> N and other points are the same
   DO mu=1,nhex 
      DO k=1,nk
         rk=rka(k)
@@ -656,10 +658,16 @@ PROGRAM cntabsorpt
 ! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
   precond  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
 
+! calculate Fremi distributions
+  ALLOCATE(fnk(2,nhex,nk))
+  CALL FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
+
   WRITE (*,*) '--------------------------------------------------------'
 
 ! number of transitions mu1,mu2
-  mn = nhex
+!  mn = nhex/2
+  mn = 6
+  mnj = 1
 
   ALLOCATE(mu1_val(mn))
   ALLOCATE(mu2_val(mn))
@@ -676,30 +684,31 @@ PROGRAM cntabsorpt
 
   n1 = 2
   n2 = 2
-  mu1_val = (/ (i, i=1,nhex) /)
-  mu2_val = (/ (i, i=1,nhex) /)
+!  mu1_val = (/ (i, i=1,nhex/2) /)
+!  mu2_val = (/ (i, i=1,nhex/2) /)
 
-  !mu1_val = (/ 11, 12, 12, 13, 10, 14 /)
-  !mu2_val = (/ 10, 11, 13, 14, 9, 15 /)
+  mu1_val = (/ 9, 10, 11, 12, 13, 10 /)
+  mu2_val = (/ 8, 11, 12, 13, 14, 9 /)
 
   eps0(:) = ebg
   reint = 0.D0
   imagint = 0.D0
 
+  WRITE(*,*) '..LOOP over all possible transitions'
   DO i = 1,mn
-    DO j = 1,mn
+    DO j = 1,mnj
     mu1 = mu1_val(i)
-    mu2 = mu2_val(j)
+    mu2 = mu2_val(i)
+!    mu2 = mu2_val(i)
 
-    CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol, &
-    laser_fwhm,nhw_laser,hw_laser,reint,imagint)
+    CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,laser_fwhm,nhw_laser,hw_laser,reint,imagint)
 
     DO ie = 1, nhw_laser
         IF (hw_laser(ie) .le. ptol) THEN
-            eps1Part(i,j,ie) = eps0(ie) + prediel*imagint(ie)/1.D-3
+            eps1Part(i,j,ie) = prediel*imagint(ie)/1.D-3
             eps2Part(i,j,ie) = prediel*reint(ie)/1.D-3
         ELSE
-            eps1Part(i,j,ie) = eps0(ie) + prediel*imagint(ie)/hw_laser(ie)
+            eps1Part(i,j,ie) = prediel*imagint(ie)/hw_laser(ie)
             eps2Part(i,j,ie) = prediel*reint(ie)/hw_laser(ie)
         END IF
     END DO
@@ -707,48 +716,77 @@ PROGRAM cntabsorpt
     sigm1Part(i,j,1:nhw_laser) = precond*reint
     sigm2Part(i,j,1:nhw_laser) = -precond*imagint
 
-    CALL Absorption(nhw_laser,eps1Part(i,j,1:nhw_laser),eps2Part(i,j,1:nhw_laser),&
-    sigm1Part(i,j,1:nhw_laser),sigm2Part(i,j,1:nhw_laser),absorptPart(i,j,1:nhw_laser))
+    CALL Absorption(nhw_laser,eps1,eps2,sigm1Part(i,j,1:nhw_laser),sigm2Part(i,j,1:nhw_laser),absorptPart(i,j,1:nhw_laser))
 
     END DO
   END DO
 
+  WRITE(*,*) '..End of LOOP '
+  WRITE(*,*) '-------------------------------------------------------'
+
+  max_position = MAXLOC(absorptPart)
+  PRINT*, 'max absorption in ', MAXLOC(absorptPart), 'frequency =', hw_laser(max_position(3))
+!  PRINT*, 'energy: mu1', MINVAL(Enk(2,max_position(1),1:nk)), 'energy: mu2', MINVAL(Enk(2,max_position(2),1:nk))
+!  PRINT*, 'energy: 12', MINVAL(Enk(2,12,1:nk)), 'energy: 11', MINVAL(Enk(2,11,1:nk)), 'energy: 10', MINVAL(Enk(2,10,1:nk))
+!  PRINT*, 'energy: 13', MINVAL(Enk(2,13,1:nk)), 'energy: 14', MINVAL(Enk(2,14,1:nk)), 'energy: 15', MINVAL(Enk(2,15,1:nk))
+  PRINT*, 'max eps1 in ', MAXLOC(eps1Part)
+  PRINT*, 'max eps2 in ', MAXLOC(eps2Part)
+  PRINT*, 'max sigm1 in ', MAXLOC(sigm1Part)
+  PRINT*, 'max sigm2 in ', MAXLOC(sigm2Part)
+
+  WRITE(*,*) '-------------------------------------------------------'
+
   ! plot eps1Part(hw) *******************************
   OPEN(unit=22,file='tube.eps1Part.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), ((eps1Part(i,j,ie), i=1,mn),j=1,mn)
+  DO j = 1,mnj
+    DO ie = 1, nhw_laser
+        WRITE(22,1001) hw_laser(ie), eps1Part(1:mn,j,ie)
+    ENDDO
+    WRITE(22,1001) ' '
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'different contributions in eps1 in tube.eps1Part.xyy.'//outfile
 
   ! plot eps2Part(hw) *******************************
   OPEN(unit=22,file='tube.eps2Part.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), ((eps2Part(i,j,ie), i=1,mn),j=1,mn)
+  DO j = 1,mnj
+      DO ie = 1, nhw_laser
+         WRITE(22,1001) hw_laser(ie), eps2Part(1:mn,j,ie)
+      ENDDO
+      WRITE(22,1001) ' '
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'different contributions in eps2 in tube.eps2Part.xyy.'//outfile
 
   ! plot sigm1Part(hw) *******************************
   OPEN(unit=22,file='tube.sigm1Part.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), ((sigm1Part(i,j,ie)/(e2/h), i=1,mn),j=1,mn)
+  DO j = 1,mnj
+      DO ie = 1, nhw_laser
+         WRITE(22,1001) hw_laser(ie), sigm1Part(1:mn,j,ie)/(e2/h)
+      ENDDO
+      WRITE(22,1001) ' '
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'different contributions in sigm1 in tube.sigm1Part.xyy.'//outfile
 
   ! plot sigm2Part(hw) *******************************
   OPEN(unit=22,file='tube.sigm2Part.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), ((sigm2Part(i,j,ie)/(e2/h), i=1,mn),j=1,mn)
+  DO j = 1,mnj
+      DO ie = 1, nhw_laser
+         WRITE(22,1001) hw_laser(ie), sigm2Part(1:mn,j,ie)/(e2/h)
+      ENDDO
+      WRITE(22,1001) ' '
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'different contributions in sigm2 in tube.sigm2Part.xyy.'//outfile
 
   ! plot absorptPart(hw) *******************************
   OPEN(unit=22,file='tube.absorptPart.xyy.'//outfile)
-  DO ie = 1, nhw_laser
-     WRITE(22,1001) hw_laser(ie), ((absorptPart(i,j,ie)/(e2/h), i=1,mn),j=1,mn)
+  DO j = 1,mnj
+      DO ie = 1, nhw_laser
+         WRITE(22,1001) hw_laser(ie), absorptPart(1:mn,j,ie)/(e2/h)
+      ENDDO
+      WRITE(22,1001) ' '
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'different contributions in absorption in tube.absorptPart.xyy.'//outfile

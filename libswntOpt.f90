@@ -43,6 +43,7 @@
 ! - SUBROUTINE DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1,sigm2)
 ! - SUBROUTINE Func_test(nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,difFermiDist,matrElementSq,diracAvgFunc)
 ! - SUBROUTINE tbDipolXYOrt(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
+! - SUBROUTINE FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
 !*******************************************************************************
 !*******************************************************************************
 SUBROUTINE polVector(theta,epol)
@@ -173,6 +174,7 @@ SUBROUTINE DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fw
   REAL(8), SAVE          :: pre
   REAL(8)                :: eps0(ne)
   REAL(8)                :: reint(ne), imagint(ne)
+  REAL(8)                :: fnk(2,nhex,nk)
 
   REAL(8), ALLOCATABLE   :: ress(:), imss(:) !(ne)
 
@@ -200,6 +202,9 @@ eps0(:) = ebg
   area = pi*(diameter/2.D0)**2    !(Angstroms**2)
   pre  = 8.D0*pi*e2*hbarm**2/area !(eV**3 Angstroms**3)
 
+! calculate Fremi distributions
+  CALL FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
+
 ! sum over n1, mu1, n2, mu2 and k
   IF (ALLOCATED(ress) .EQV. .TRUE.) DEALLOCATE(ress)
   IF (ALLOCATED(imss) .EQV. .TRUE.) DEALLOCATE(imss)
@@ -214,7 +219,7 @@ eps0(:) = ebg
            DO mu2 = 1, nhex
               
               IF (n1 == n2 .AND. mu1 == mu2) CYCLE
-              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,reint,imagint)
+              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
 ! accumulate dielectric function vs photon energy
                  DO ie = 1, ne        
                     IF (hw(ie) .le. ptol) THEN
@@ -1086,6 +1091,7 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
 
   REAL(8), ALLOCATABLE   :: ress(:), imss(:) !(ne)
   REAL(8)                :: reint(ne), imagint(ne)
+  REAL(8)                :: fnk(2,nhex,nk)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
   REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
@@ -1109,6 +1115,9 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
   ress = 0.D0
   imss = 0.D0
 
+! calculate Fremi distributions
+  CALL FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
+
 ! sum over n1, mu1, n2, mu2
   DO n1 = 1, 2         ! 1 <-> valence, 2 <-> conduction
      DO mu1 = 1, nhex
@@ -1116,7 +1125,7 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
            DO mu2 = 1, nhex
 
               IF (n1 == n2 .AND. mu1 == mu2) CYCLE
-              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,reint,imagint)
+              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
 
               DO ie = 1, ne
                 ress(ie) = ress(ie) + reint(ie)
@@ -1190,6 +1199,7 @@ SUBROUTINE DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
 
   REAL(8), ALLOCATABLE   :: ress(:), imss(:) !(ne)
   REAL(8)                :: reint(ne), imagint(ne)
+  REAL(8)                :: fnk(2,nhex,nk)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
   REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
@@ -1213,6 +1223,9 @@ SUBROUTINE DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
   ress = 0.D0
   imss = 0.D0
 
+! calculate Fremi distributions
+  CALL FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
+
 ! sum over n1, mu1, n2, mu2
   DO n1 = 1, 2         ! 1 <-> valence, 2 <-> conduction
 !only interband transitions
@@ -1226,7 +1239,7 @@ SUBROUTINE DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
         DO mu2 = 1, nhex
 
               IF (n1 == n2 .AND. mu1 == mu2) CYCLE
-              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,reint,imagint)
+              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
 
               DO ie = 1, ne
                 ress(ie) = ress(ie) + reint(ie)
@@ -1299,6 +1312,7 @@ SUBROUTINE DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
 
   REAL(8), ALLOCATABLE   :: ress(:), imss(:) !(ne)
   REAL(8)                :: reint(ne), imagint(ne)
+  REAL(8)                :: fnk(2,nhex,nk)
 
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
   REAL(8), PARAMETER     :: e2    = 14.4          !(eV-A)     e2 = e^2
@@ -1322,6 +1336,9 @@ SUBROUTINE DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
   ress = 0.D0
   imss = 0.D0
 
+! calculate Fremi distributions
+  CALL FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
+
 ! sum over n1, mu1, n2, mu2
   DO n1 = 1, 2         ! 1 <-> valence, 2 <-> conduction
 !only intraband transitions
@@ -1333,7 +1350,7 @@ SUBROUTINE DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
         DO mu2 = 1, nhex
 
               IF (n1 == n2 .AND. mu1 == mu2) CYCLE
-              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,reint,imagint)
+              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
 
               DO ie = 1, ne
                 ress(ie) = ress(ie) + reint(ie)
@@ -1719,7 +1736,7 @@ END DO
 END SUBROUTINE tbDipolXYOrt
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,reint,imagint)
+SUBROUTINE RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
 !===============================================================================
 ! Compute the integral over dk for particular n1,mu1 and n2,mu2, which corresponds to
 ! the dynamical conductivity as a function of probe photon energy
@@ -1733,6 +1750,7 @@ SUBROUTINE RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efer
 !  nk            number of k points
 !  rka           array of k points (1/A)
 !  Enk           array of energies (eV)
+!  fnk           array of fermi distributions (dimensionless)
 !  cDipole       array of complex matrix elements (1/A)
 !  Tempr         lattice temperature (deg K)
 !  Efermi        Fermi level
@@ -1754,10 +1772,8 @@ SUBROUTINE RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efer
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  REAL(8), INTENT(in)    :: fnk(2,nhex,nk)
   COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
-
-  REAL(8), INTENT(in)    :: Tempr
-  REAL(8), INTENT(in)    :: Efermi
 
   REAL(8), INTENT(in)    :: epol(3)
 
@@ -1770,33 +1786,17 @@ SUBROUTINE RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,cDipole,Tempr,Efer
   REAL(8),  INTENT(out)  :: reint(ne), imagint(ne)
 
 ! working variables and parameter
-  REAL(8), ALLOCATABLE   :: fnk(:,:,:)  !(2,nhex,nk)
-
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
   REAL(8), PARAMETER     :: ptol  =  1.D-15
 
-  INTEGER                :: k, mu, ii, ie
+  INTEGER                :: k, ie, ii
 
 ! for calling some functions
-  REAL(8)                :: dk, rkT
-  REAL(8)                :: fermi, Ekk
+  REAL(8)                :: dk
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvgRe, diracAvgIm, Eab, diracDelta, diracDelta_im
 
   COMPLEX(8)             :: css
-
-! initial distribution functions (dimensionless)
-  IF (ALLOCATED(fnk) .EQV. .TRUE.) DEALLOCATE(fnk)
-  ALLOCATE(fnk(2,nhex,nk))
-  rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
-  DO ii = 1, 2
-     DO mu = 1, nhex
-        DO k = 1, nk
-           Ekk = Enk(ii,mu,k)
-           fnk(ii,mu,k) = fermi(Ekk,Efermi,rkT)
-        END DO
-     END DO
-  END DO
 
  reint = 0.D0
  imagint = 0.D0
@@ -1880,5 +1880,52 @@ DO k=1,nk
 END DO
 
 END SUBROUTINE RealImagPartIntegral
+!*******************************************************************************
+!*******************************************************************************
+SUBROUTINE FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
+!===============================================================================
+! Compute Fermi distributions for a given array of electron energies,
+! temperature and Fermi level position
+!-------------------------------------------------------------------------------
+! Input        :
+!  nhex          number of hexagons
+!  nk            number of k points
+!  Enk           array of energies (eV)
+!  Tempr         lattice temperature (deg K)
+!  Efermi        Fermi level
+! Output       :
+!  fnk(2,nhex,nk)  fermi distributions for Enk(2,nhex,nk) (dimensionless)
+!===============================================================================
+  IMPLICIT NONE
+
+! input variables
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+
+  REAL(8), INTENT(in)    :: Tempr
+  REAL(8), INTENT(in)    :: Efermi
+
+! output variables
+  REAL(8), INTENT(out)   :: fnk(2,nhex,nk)
+
+! working variables
+  INTEGER                :: ii, mu, k
+  REAL(8)                :: fermi, Ekk, rkT
+
+
+! initial distribution functions (dimensionless)
+  rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
+  DO ii = 1, 2
+     DO mu = 1, nhex
+        DO k = 1, nk
+           Ekk = Enk(ii,mu,k)
+           fnk(ii,mu,k) = fermi(Ekk,Efermi,rkT)
+        END DO
+     END DO
+  END DO
+
+END SUBROUTINE FermiDistributionArray
 !*******************************************************************************
 !*******************************************************************************
