@@ -29,6 +29,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! - SUBROUTINE CutLineK(n,m,muk11,muk22,mukp11,mukp22)
 ! - SUBROUTINE solvePQeq(n,m,p,q)
+! - SUBROUTINE CutLineii(n,m,nhex,muii)
 !*******************************************************************************
 !*******************************************************************************
 INTEGER FUNCTION nHexagon(n,m)
@@ -587,3 +588,201 @@ SUBROUTINE solvePQeq(n,m,p,q)
 
 END SUBROUTINE solvePQeq
 !*******************************************************************************
+!*******************************************************************************
+SUBROUTINE CutLineii(n,m,nhex,muii)
+!===============================================================================
+! calculates the indeces of cutting lines, which correspond to particular transitions
+! ------------------------------------------------------------------------------
+! Input      :
+!  n,m             chiral vector coordinates in (a1,a2)
+!  nhex            number of hexagons
+! Output     :
+! muii             array of cutting line ideces which correspond to certain Eii (4,nhex/2 + 1)
+! comments on dimensionality: for semiconducting-1 and -2 CNTs as well as for metal-1 the degeneracy of
+! energy bands is equal to 2, then muii is non zero only in range (1:2, :)
+! for metal-2 CNT energy bands are four fold degenerate, then non zero values are (1:4, 1: ..)
+!===============================================================================
+IMPLICIT NONE
+
+!input variables
+  INTEGER, INTENT(in)    :: n,m, nhex
+
+!output variables
+  INTEGER, INTENT(out)   :: muii(4,nhex/2+1)
+
+!working variables
+  INTEGER                :: muk11, muk22, mukp11, mukp22
+  INTEGER                :: even, odd
+  INTEGER                :: mu11, mu22, musize
+  INTEGER                :: i, dk, dk1, dk2, max_position(1), mpos
+  INTEGER                :: metal, cond, denom
+  INTEGER                :: id, idr, igcd
+
+  id      = igcd(n,m)
+  idr     = igcd(2*n+m,2*m+n)
+
+  CALL CutLineK(n,m,muk11,muk22,mukp11,mukp22)
+  muii = 0
+
+  metal   = MOD(n-m,3)
+
+  even = 2
+  odd = 1
+
+  IF ( metal == 0 ) THEN
+! consider metallic  CNT
+      dk1 = 1
+      dk2 = -1
+
+      IF ( muk11 < nhex/2 ) THEN
+          mu11 = muk11
+      ELSE
+          mu11 = nhex - muk11
+      END IF
+
+      muii(1,1) = mu11
+      muii(2,1) = nhex - muii(1,1)
+
+      muii(3,1) = mu11
+      muii(4,1) = nhex - muii(1,1)
+
+      ! check if we first reach the center or the edge
+      IF ( mu11 > INT(nhex/4) .and. mu11 < nhex/2 ) THEN
+        cond = 1
+        denom = 2
+      ELSEIF ( mu11 < INT(nhex/4) ) THEN
+        cond = 4
+        denom = 1
+      ELSEIF ( mu11 == nhex/2 ) THEN
+        cond = 1
+        denom = 1
+      ELSE
+        PRINT*, "No condition was found"
+      END IF
+
+!      PRINT*, cond
+!      PRINT*, muii(1,1), muii(2,1), muii(3,1), muii(4,1)
+
+      i = 1
+      DO WHILE ( MAXVAL(muii(cond,:)) .lt. nhex/denom )
+          i = i + 1
+          muii(1,i) = muii(1,i-1) + dk1
+          muii(2,i) = nhex - muii(1,i)
+
+          muii(3,i) = muii(3,i-1) + dk2
+          muii(4,i) = nhex - muii(3,i)
+          !PRINT*, muii(1,i), muii(2,i), muii(3,i), muii(4,i), 'max', MAXVAL(muii(cond,:))
+      END DO
+
+      PRINT*, i
+      IF ( i .ge. nhex/2+1 ) THEN
+        GOTO 1
+      ELSE
+          IF ( cond == 1 ) THEN
+            dk = -1
+            muii(1,i+1) = MINVAL(muii(1,1:i)) + dk
+            muii(2,i+1) = nhex - muii(1,i+1)
+          ELSE
+            dk = 1
+            muii(1,i+1) = MAXVAL(muii(1,1:i)) + dk
+            muii(2,i+1) = nhex - muii(1,i+1)
+          END IF
+
+          i = i + 1
+          DO WHILE ( i < nhex/2+1 )
+              IF ( muii(1,i) == muii(2,i) ) EXIT
+
+              muii(1,i+1) = muii(1, i) + dk
+              muii(2,i+1) = nhex - muii(1,i+1)
+              i = i + 1
+              !PRINT*, i, muii(1,i), muii(2,i)
+          END DO
+      END IF
+
+  ELSE
+!consider semiconducting CNT
+
+! fix ordering of cutting lines numbers
+! such as muii(1,:) <-> 1, nhex/2
+! muii(2,:) <-> nhex/2, nhex
+      IF (muk11 < mukp11) THEN
+          mu11 = muk11
+          mu22 = muk22
+      ELSE
+          mu11 = mukp11
+          mu22 = mukp22
+      END IF
+
+! muii(:,k) <-> Ekk
+      IF (mu11 > mu22) THEN
+          dk1 = 1
+          dk2 = -1
+      ELSE
+          dk1 = -1
+          dk2 = 1
+      END IF
+
+! check if we first reach the center or the edge
+      IF (mu11 > INT(nhex/4)) THEN
+        cond = 1
+      ELSE
+        cond = 2
+      END IF
+
+! assign starting values
+      muii(1,1) = mu11
+      muii(2,1) = nhex - mu11
+
+      muii(1,2) = mu22
+      muii(2,2) = nhex - mu22
+
+      DO WHILE ( MAXVAL(muii(cond,:)) .lt. nhex/(2-(cond-1)) )
+          even = even + 2
+          odd = odd + 2
+
+          muii(1,odd) = muii(1,odd-2) + dk1
+          muii(2,odd) = nhex - muii(1,odd)
+          !PRINT*, muii(1,odd)
+          muii(1,even) = muii(1,even-2) + dk2
+          muii(2,even) = nhex - muii(1,even)
+          !PRINT*, muii(1,even), 'max', MAXVAL(muii(1,1:nhex/2+1))
+      END DO
+
+      max_position = MAXLOC(muii(1,:))
+      !PRINT*, max_position(1)
+
+      mpos = max_position(1)
+      IF ( cond == 1 ) THEN
+        dk = -1
+        muii(1,mpos+1) = MINVAL(muii(1,1:mpos)) + dk
+        muii(2,mpos+1) = nhex - muii(1,mpos+1)
+      ELSE
+        dk = 1
+        muii(1,mpos+1) = MAXVAL(muii(1,1:mpos)) + dk
+        muii(2,mpos+1) = nhex - muii(1,mpos+1)
+      END IF
+
+      DO i = mpos + 1, nhex/2
+          muii(1,i+1) = muii(1, i) + dk
+          muii(2,i+1) = nhex - muii(1,i+1)
+      END DO
+
+   END IF
+
+1   IF (MINVAL(muii) < 0) STOP "WARNING: Negative value in cutting line"
+
+    PRINT*, "Cutting lines numbers matched with ii transitions"
+    IF ( metal == 0 ) THEN
+        DO i = 1, nhex/2+1
+            PRINT*, i-1,i-1, muii(1,i), muii(2,i), muii(3,i), muii(4,i)
+        END DO
+    ELSE
+        DO i = 1, nhex/2+1
+            PRINT*, i,i, muii(1,i), muii(2,i)
+        END DO
+    END IF
+
+ END SUBROUTINE Cutlineii
+ !*******************************************************************************
+
+

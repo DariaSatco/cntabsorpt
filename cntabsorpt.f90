@@ -105,7 +105,7 @@ PROGRAM cntabsorpt
   INTEGER                :: i, mn, j, mnj
   REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
   REAL(8)                :: diameter, area, prediel, precond, tubeDiam
-  INTEGER, ALLOCATABLE   :: mu1_val(:), mu2_val(:)
+  INTEGER, ALLOCATABLE   :: mu1_val(:), mu2_val(:), muii(:,:)
   REAL(8), ALLOCATABLE   :: absorptPart(:,:,:), eps1Part(:,:,:), eps2Part(:,:,:), sigm1Part(:,:,:), sigm2Part(:,:,:)
   REAL(8), ALLOCATABLE   :: eps0(:), reint(:), imagint(:), fnk(:,:,:)
 
@@ -231,6 +231,8 @@ PROGRAM cntabsorpt
   CALL linArray(nk,rkmin,rkmax,rka)
   dk=rka(2)-rka(1)            
 
+  ALLOCATE(muii(4,nhex/2+1))
+  CALL CutLineii(n,m,nhex,muii)
 ! compute energy bands En(k) (eV)
 ! NOTE: cutting lines are always taken from 1 to N
 ! the notations mu = 0..N-1 and mu = 1..N are consistent
@@ -665,9 +667,10 @@ PROGRAM cntabsorpt
   WRITE (*,*) '--------------------------------------------------------'
 
 ! number of transitions mu1,mu2
-!  mn = nhex/2
-  mn = 6
-  mnj = 1
+  mn = nhex/2
+  mnj = nhex/2
+!  mn = 6
+!  mnj = 1
 
   ALLOCATE(mu1_val(mn))
   ALLOCATE(mu2_val(mn))
@@ -684,11 +687,11 @@ PROGRAM cntabsorpt
 
   n1 = 2
   n2 = 2
-!  mu1_val = (/ (i, i=1,nhex/2) /)
-!  mu2_val = (/ (i, i=1,nhex/2) /)
+  mu1_val = (/ (i, i=1,nhex/2) /)
+  mu2_val = (/ (i, i=1,nhex/2) /)
 
-  mu1_val = (/ 9, 10, 11, 12, 13, 10 /)
-  mu2_val = (/ 8, 11, 12, 13, 14, 9 /)
+!  mu1_val = (/ 9, 10, 11, 12, 13, 10 /)
+!  mu2_val = (/ 8, 11, 12, 13, 14, 9 /)
 
   eps0(:) = ebg
   reint = 0.D0
@@ -698,8 +701,8 @@ PROGRAM cntabsorpt
   DO i = 1,mn
     DO j = 1,mnj
     mu1 = mu1_val(i)
-    mu2 = mu2_val(i)
 !    mu2 = mu2_val(i)
+    mu2 = mu2_val(j)
 
     CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,laser_fwhm,nhw_laser,hw_laser,reint,imagint)
 
