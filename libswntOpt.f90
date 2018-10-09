@@ -120,7 +120,7 @@ SUBROUTINE imagDielAlpha(ne,hw,eps2,refrac,alpha)
 END SUBROUTINE imagDielAlpha
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fwhm,ne,hw,eps1,eps2)
+SUBROUTINE DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fwhm,ne,hw,eps1Part,eps2Part,eps1,eps2)
 !===============================================================================
 ! Compute the real and imaginary parts of the dielectric function as a function
 ! of probe photon energy
@@ -141,7 +141,9 @@ SUBROUTINE DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fw
 !  hw(ne)        array of probe photon energies (eV)
 ! Output       :
 !  eps1(ne)      real part of dielectric function (none)
-!  eps2(ne)      imaginary part of dielectric function (none)           
+!  eps2(ne)      imaginary part of dielectric function (none)
+!  eps1Part(2,nhex,2,nhex,ne)  real part of dielectric function contribution from particular transition
+!  eps2Part(2,nhex,2,nhex,ne)  imaginary part of dielectric function contribution from particular transition
 !===============================================================================
   IMPLICIT NONE
       
@@ -168,6 +170,7 @@ SUBROUTINE DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fw
   
 ! output variable
   REAL(8),  INTENT(out)  :: eps1(ne), eps2(ne)
+  REAL(8),  INTENT(out)  :: eps1Part(2,nhex,2,nhex,ne), eps2Part(2,nhex,2,nhex,ne)
 
 ! working variables and parameter
 
@@ -223,12 +226,15 @@ eps0(:) = ebg
 ! accumulate dielectric function vs photon energy
                  DO ie = 1, ne        
                     IF (hw(ie) .le. ptol) THEN
-                        ress(ie) = ress(ie) + imagint(ie)/1.D-3
-                        imss(ie) = imss(ie) + reint(ie)/1.D-3
+                        eps1Part(n1,mu1,n2,mu2,ie) = imagint(ie)/1.D-3
+                        eps2Part(n1,mu1,n2,mu2,ie) = reint(ie)/1.D-3
                     ELSE
-                        ress(ie) = ress(ie) + imagint(ie)/hw(ie)  ! (1/Angstroms**3 1/eV**3)
-                        imss(ie) = imss(ie) + reint(ie)/hw(ie)    ! (1/Angstroms**3 1/eV**3)
+                        eps1Part(n1,mu1,n2,mu2,ie) = imagint(ie)/hw(ie)  ! (1/Angstroms**3 1/eV**3)
+                        eps2Part(n1,mu1,n2,mu2,ie) = reint(ie)/hw(ie)    ! (1/Angstroms**3 1/eV**3)
                     END IF
+
+                    ress(ie) = ress(ie) + eps1Part(n1,mu1,n2,mu2,ie)
+                    imss(ie) = imss(ie) + eps2Part(n1,mu1,n2,mu2,ie)
                  END DO
                  
 
@@ -237,9 +243,13 @@ eps0(:) = ebg
      END DO
   END DO
   
-! imaginary part of dielectric function (dimensionless)
+! real and imaginary part of dielectric function (dimensionless)
   eps1 = eps0 + pre*ress
   eps2 = pre*imss
+
+! contributions to dielectric funtion
+  eps1Part = pre*eps1Part
+  eps2Part = pre*eps2Part
   
 END SUBROUTINE DielPermittivity
 !*******************************************************************************
@@ -1036,7 +1046,7 @@ SUBROUTINE EELS(ne,eps1,eps2,eelspec)
 END SUBROUTINE EELS
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1,sigm2)
+SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1Part,sigm2Part,sigm1,sigm2)
 !===============================================================================
 ! Compute the real and imaginary parts of the dynamical conductivity as a function
 ! of probe photon energy
@@ -1060,6 +1070,8 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
 ! Output       :
 !  sigm1(ne)      real part of dynamical conductivity (e^2/h)
 !  sigm2(ne)      imaginary part of dynamical conductivity (e^2/h)
+!  sigm1Part(2,nhex,2,nhex,ne) real part of conductivity contribution from particular transition
+!  sigm2Part(2,nhex,2,nhex,ne) imaginary part of conductivity contribution from particular transition
 !===============================================================================
   IMPLICIT NONE
 
@@ -1084,6 +1096,7 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
 
 ! output variable
   REAL(8),  INTENT(out)  :: sigm1(ne), sigm2(ne)
+  REAL(8),  INTENT(out)  :: sigm1Part(2,nhex,2,nhex,ne), sigm2Part(2,nhex,2,nhex,ne)
 
 ! working variables and parameter
 
@@ -1128,8 +1141,11 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
               CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
 
               DO ie = 1, ne
-                ress(ie) = ress(ie) + reint(ie)
-                imss(ie) = imss(ie) + imagint(ie)
+                sigm1Part(n1,mu1,n2,mu2,ie) = reint(ie)
+                sigm2Part(n1,mu1,n2,mu2,ie) = imagint(ie)
+
+                ress(ie) = ress(ie) + sigm1Part(n1,mu1,n2,mu2,ie)
+                imss(ie) = imss(ie) + sigm2Part(n1,mu1,n2,mu2,ie)
               END DO
 
            END DO
@@ -1137,9 +1153,13 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
      END DO
   END DO
 
-! imaginary part of dielectric function [e^2/h] = (A/s)
+! real and imaginary parts of conductivity [e^2/h] = (A/s)
   sigm1 = pre*ress
   sigm2 = -pre*imss
+
+! conductivity contributions [e^2/h] = (A/s)
+  sigm1Part = pre*sigm1Part
+  sigm2Part = -pre*sigm2Part
 
 END SUBROUTINE DynConductivity
 !*******************************************************************************
@@ -1818,7 +1838,7 @@ DO k=1,nk
 
 ! if small then skip
     IF ( ABS(Eab) .lt. ptol ) THEN
-        IF (ABS(p2df) > ptol) STOP 'WARRNING: danger of division by zero'
+        IF (ABS(p2df) > ptol) STOP 'WARNING: danger of division by zero'
     ENDIF
 
     IF (ABS(p2df) <= ptol) CYCLE

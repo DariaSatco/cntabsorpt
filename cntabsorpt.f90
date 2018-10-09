@@ -90,6 +90,11 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE    :: sigm2_inter(:)  !(nhw_laser)
   REAL(8), ALLOCATABLE    :: absorpt(:)      !(nhw_laser)
   COMPLEX(8), ALLOCATABLE :: cDipole(:,:,:,:,:,:) !(3,nk,2,nhex,2,nhex)
+  REAL(8), ALLOCATABLE    :: absorptPart(:,:,:,:,:)
+  REAL(8), ALLOCATABLE    :: eps1Part(:,:,:,:,:)
+  REAL(8), ALLOCATABLE    :: eps2Part(:,:,:,:,:)
+  REAL(8), ALLOCATABLE    :: sigm1Part(:,:,:,:,:)
+  REAL(8), ALLOCATABLE    :: sigm2Part(:,:,:,:,:)
 !-------------------------------------------------------------------------------
 ! variables for input and output files 
   CHARACTER(40)           :: infile, outfile, path
@@ -99,14 +104,13 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE   :: difFermiDist(:,:,:,:,:)
   REAL(8), ALLOCATABLE   :: matrElementSq(:,:,:,:,:)
   REAL(8), ALLOCATABLE   :: diracAvgFunc(:,:,:,:,:,:)
-  INTEGER                :: max_position(3), min_position(3)
+  INTEGER                :: max_position(5), min_position(5)
 
   REAL                   :: divergence(9), kCoef(10), maxAbsDif(9)
   INTEGER                :: i, mn, j, mnj
   REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
   REAL(8)                :: diameter, area, prediel, precond, tubeDiam
   INTEGER, ALLOCATABLE   :: mu1_val(:), mu2_val(:), muii(:,:)
-  REAL(8), ALLOCATABLE   :: absorptPart(:,:,:), eps1Part(:,:,:), eps2Part(:,:,:), sigm1Part(:,:,:), sigm2Part(:,:,:)
   REAL(8), ALLOCATABLE   :: eps0(:), reint(:), imagint(:), fnk(:,:,:)
 
 !*************************************************************
@@ -231,8 +235,10 @@ PROGRAM cntabsorpt
   CALL linArray(nk,rkmin,rkmax,rka)
   dk=rka(2)-rka(1)            
 
+! compute the array of cutting line indeces corresponding to certain ii transitions
   ALLOCATE(muii(4,nhex/2+1))
   CALL CutLineii(n,m,nhex,muii)
+
 ! compute energy bands En(k) (eV)
 ! NOTE: cutting lines are always taken from 1 to N
 ! the notations mu = 0..N-1 and mu = 1..N are consistent
@@ -400,6 +406,12 @@ PROGRAM cntabsorpt
   ALLOCATE(sigm1_inter(nhw_laser))
   ALLOCATE(sigm2_inter(nhw_laser))
   
+  ALLOCATE(absorptPart(2,nhex,2,nhex,nhw_laser))
+  ALLOCATE(eps1Part(2,nhex,2,nhex,nhw_laser))
+  ALLOCATE(eps2Part(2,nhex,2,nhex,nhw_laser))
+  ALLOCATE(sigm1Part(2,nhex,2,nhex,nhw_laser))
+  ALLOCATE(sigm2Part(2,nhex,2,nhex,nhw_laser))
+
 
   WRITE (*,*) '====================================================='
   WRITE (*,*) '..Real and Imaginary part of dielectric function'
@@ -444,7 +456,7 @@ PROGRAM cntabsorpt
 !! real and imaginary parts of dielectric permittivity
 !! ======================================================================
 !
-!  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1,eps2)
+!  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1Part,eps2Part,eps1,eps2)
 !
 !! plot eps1(hw) (Lin's) ************************
 !  OPEN(unit=22,file=TRIM(path)//'tube.eps1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
@@ -467,7 +479,7 @@ PROGRAM cntabsorpt
 !! real and imaginary parts
 !! =======================================================================
 !  WRITE (*,*) '--------------------------------------------------------'
-!  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1,sigm2)
+!  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1Part,sigm2Part,sigm1,sigm2)
 !
 !! plot sigm1(hw) ******************************
 !  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
@@ -509,10 +521,9 @@ PROGRAM cntabsorpt
 ! ========================== permittivity ==============================
 ! real and imaginary parts of dielectric permittivity
 ! ======================================================================
-
   WRITE (*,*) '--------------------------------------------------------'
-
-  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1,eps2)
+  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,&
+  eps1Part,eps2Part,eps1,eps2)
 
 ! plot eps1(hw) *********************************
   OPEN(unit=22,file='tube.eps1.xyy.'//outfile)
@@ -553,7 +564,6 @@ PROGRAM cntabsorpt
 ! ======================= absorption coefficient ========================
 ! alpha
 ! =======================================================================
-
   WRITE (*,*) '--------------------------------------------------------'
   CALL imagDielAlpha(nhw_laser,hw_laser,eps2,refrac,alpha)
 
@@ -585,7 +595,8 @@ PROGRAM cntabsorpt
 ! real and imaginary parts part
 ! =======================================================================
   WRITE (*,*) '--------------------------------------------------------'
-  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1,sigm2)
+  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,&
+  sigm1Part,sigm2Part,sigm1,sigm2)
 
 ! plot sigm1(hw) ******************************
   OPEN(unit=22,file='tube.sigm1.xyy.'//outfile)
@@ -646,26 +657,6 @@ PROGRAM cntabsorpt
 ! ======================= explore contributions from different cutting lines ====================
 ! -----------------------------------------------------------------------------------------------
 
-  diameter = tubeDiam(n,m)        !(Angstroms)
-  area = pi*(diameter/2.D0)**2    !(Angstroms**2)
-
-! dielectric function prefactor (eV**3 Angstroms**3)
-! --------------------------------------------------
-! see for the prefactor expression paper:
-! Sanders, G. D., et al.
-! "Resonant coherent phonon spectroscopy of single-walled carbon nanotubes."
-! Physical Review B 79.20 (2009): 205434.
-  prediel  = 8.D0*pi*e2*hbarm**2/area !(eV**3 Angstroms**3)
-
-! conductivity function prefactor (eV**2 Angstroms**3) * [e^2/h] = (A/s)
-  precond  = 32.D0*hbarm**2/diameter * e2/h !(eV**2 Angstroms**3) * [e^2/h] = (A/s)
-
-! calculate Fremi distributions
-  ALLOCATE(fnk(2,nhex,nk))
-  CALL FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
-
-  WRITE (*,*) '--------------------------------------------------------'
-
 ! number of transitions mu1,mu2
   mn = nhex/2
   mnj = nhex/2
@@ -675,11 +666,6 @@ PROGRAM cntabsorpt
   ALLOCATE(mu1_val(mn))
   ALLOCATE(mu2_val(mn))
 
-  ALLOCATE(absorptPart(mn,mn,nhw_laser))
-  ALLOCATE(eps1Part(mn,mn,nhw_laser))
-  ALLOCATE(eps2Part(mn,mn,nhw_laser))
-  ALLOCATE(sigm1Part(mn,mn,nhw_laser))
-  ALLOCATE(sigm2Part(mn,mn,nhw_laser))
 
   ALLOCATE(eps0(nhw_laser))
   ALLOCATE(reint(nhw_laser))
@@ -701,25 +687,11 @@ PROGRAM cntabsorpt
   DO i = 1,mn
     DO j = 1,mnj
     mu1 = mu1_val(i)
-!    mu2 = mu2_val(i)
     mu2 = mu2_val(j)
+!    mu2 = mu2_val(i)
 
-    CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,laser_fwhm,nhw_laser,hw_laser,reint,imagint)
-
-    DO ie = 1, nhw_laser
-        IF (hw_laser(ie) .le. ptol) THEN
-            eps1Part(i,j,ie) = prediel*imagint(ie)/1.D-3
-            eps2Part(i,j,ie) = prediel*reint(ie)/1.D-3
-        ELSE
-            eps1Part(i,j,ie) = prediel*imagint(ie)/hw_laser(ie)
-            eps2Part(i,j,ie) = prediel*reint(ie)/hw_laser(ie)
-        END IF
-    END DO
-
-    sigm1Part(i,j,1:nhw_laser) = precond*reint
-    sigm2Part(i,j,1:nhw_laser) = -precond*imagint
-
-    CALL Absorption(nhw_laser,eps1,eps2,sigm1Part(i,j,1:nhw_laser),sigm2Part(i,j,1:nhw_laser),absorptPart(i,j,1:nhw_laser))
+    CALL Absorption(nhw_laser,eps1,eps2,sigm1Part(n1,mu1,n2,mu2,1:nhw_laser),sigm2Part(n1,mu1,n2,mu2,1:nhw_laser),&
+    absorptPart(n1,mu1,n2,mu2,1:nhw_laser))
 
     END DO
   END DO
@@ -727,15 +699,29 @@ PROGRAM cntabsorpt
   WRITE(*,*) '..End of LOOP '
   WRITE(*,*) '-------------------------------------------------------'
 
-  max_position = MAXLOC(absorptPart)
-  PRINT*, 'max absorption in ', MAXLOC(absorptPart), 'frequency =', hw_laser(max_position(3))
-!  PRINT*, 'energy: mu1', MINVAL(Enk(2,max_position(1),1:nk)), 'energy: mu2', MINVAL(Enk(2,max_position(2),1:nk))
-!  PRINT*, 'energy: 12', MINVAL(Enk(2,12,1:nk)), 'energy: 11', MINVAL(Enk(2,11,1:nk)), 'energy: 10', MINVAL(Enk(2,10,1:nk))
-!  PRINT*, 'energy: 13', MINVAL(Enk(2,13,1:nk)), 'energy: 14', MINVAL(Enk(2,14,1:nk)), 'energy: 15', MINVAL(Enk(2,15,1:nk))
-  PRINT*, 'max eps1 in ', MAXLOC(eps1Part)
-  PRINT*, 'max eps2 in ', MAXLOC(eps2Part)
-  PRINT*, 'max sigm1 in ', MAXLOC(sigm1Part)
-  PRINT*, 'max sigm2 in ', MAXLOC(sigm2Part)
+  DO n1 = 1,2
+    DO n2 = 1,2
+        DO mu1 = 1, nhex/2
+            DO mu2 = 1, nhex/2
+! look for zeros in real part of dielectric function
+            DO ie = 1, nhw_laser-1
+                IF ( eps1Part(n1,mu1,n2,mu2,ie) * eps1Part(n1,mu1,n2,mu2,ie+1) < 0.D0 ) THEN
+                PRINT*, n1, mu1, n2, mu2
+                PRINT*, "i", MINLOC(ABS(muii(1,:) - mu1)), "j", MINLOC(ABS(muii(1,:) - mu2))
+                END IF
+            END DO
+
+            END DO
+        END DO
+    END DO
+  END DO
+
+!  max_position = MAXLOC(absorptPart)
+!  PRINT*, 'max absorption in ', MAXLOC(absorptPart), 'frequency =', hw_laser(max_position(3))
+!  PRINT*, 'max eps1 in ', MAXLOC(eps1Part)
+!  PRINT*, 'max eps2 in ', MAXLOC(eps2Part)
+!  PRINT*, 'max sigm1 in ', MAXLOC(sigm1Part)
+!  PRINT*, 'max sigm2 in ', MAXLOC(sigm2Part)
 
   WRITE(*,*) '-------------------------------------------------------'
 
@@ -743,7 +729,7 @@ PROGRAM cntabsorpt
   OPEN(unit=22,file='tube.eps1Part.xyy.'//outfile)
   DO j = 1,mnj
     DO ie = 1, nhw_laser
-        WRITE(22,1001) hw_laser(ie), eps1Part(1:mn,j,ie)
+        WRITE(22,1001) hw_laser(ie), eps1Part(n1,1:mn,n2,j,ie)
     ENDDO
     WRITE(22,1001) ' '
   ENDDO
@@ -754,7 +740,7 @@ PROGRAM cntabsorpt
   OPEN(unit=22,file='tube.eps2Part.xyy.'//outfile)
   DO j = 1,mnj
       DO ie = 1, nhw_laser
-         WRITE(22,1001) hw_laser(ie), eps2Part(1:mn,j,ie)
+         WRITE(22,1001) hw_laser(ie), eps2Part(n1,1:mn,n2,j,ie)
       ENDDO
       WRITE(22,1001) ' '
   ENDDO
@@ -765,7 +751,7 @@ PROGRAM cntabsorpt
   OPEN(unit=22,file='tube.sigm1Part.xyy.'//outfile)
   DO j = 1,mnj
       DO ie = 1, nhw_laser
-         WRITE(22,1001) hw_laser(ie), sigm1Part(1:mn,j,ie)/(e2/h)
+         WRITE(22,1001) hw_laser(ie), sigm1Part(n1,1:mn,n2,j,ie)/(e2/h)
       ENDDO
       WRITE(22,1001) ' '
   ENDDO
@@ -776,7 +762,7 @@ PROGRAM cntabsorpt
   OPEN(unit=22,file='tube.sigm2Part.xyy.'//outfile)
   DO j = 1,mnj
       DO ie = 1, nhw_laser
-         WRITE(22,1001) hw_laser(ie), sigm2Part(1:mn,j,ie)/(e2/h)
+         WRITE(22,1001) hw_laser(ie), sigm2Part(n1,1:mn,n2,j,ie)/(e2/h)
       ENDDO
       WRITE(22,1001) ' '
   ENDDO
@@ -787,7 +773,7 @@ PROGRAM cntabsorpt
   OPEN(unit=22,file='tube.absorptPart.xyy.'//outfile)
   DO j = 1,mnj
       DO ie = 1, nhw_laser
-         WRITE(22,1001) hw_laser(ie), absorptPart(1:mn,j,ie)/(e2/h)
+         WRITE(22,1001) hw_laser(ie), absorptPart(n1,1:mn,n2,j,ie)/(e2/h)
       ENDDO
       WRITE(22,1001) ' '
   ENDDO

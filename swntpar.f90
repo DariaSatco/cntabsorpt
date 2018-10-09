@@ -599,8 +599,11 @@ SUBROUTINE CutLineii(n,m,nhex,muii)
 ! Output     :
 ! muii             array of cutting line ideces which correspond to certain Eii (4,nhex/2 + 1)
 ! comments on dimensionality: for semiconducting-1 and -2 CNTs as well as for metal-1 the degeneracy of
-! energy bands is equal to 2, then muii is non zero only in range (1:2, :)
+! energy bands is equal to 2
+! for semiconducting CNT muii is non zero only in range (1:2, :)
+! for metal-1 CNT muii is the same in range (1:2, :) and (3:4, :)
 ! for metal-2 CNT energy bands are four fold degenerate, then non zero values are (1:4, 1: ..)
+! the last non zero element depends on chirality
 !===============================================================================
 IMPLICIT NONE
 
@@ -614,12 +617,8 @@ IMPLICIT NONE
   INTEGER                :: muk11, muk22, mukp11, mukp22
   INTEGER                :: even, odd
   INTEGER                :: mu11, mu22, musize
-  INTEGER                :: i, dk, dk1, dk2, max_position(1), mpos
+  INTEGER                :: i, dk, dk1, dk2, mpos
   INTEGER                :: metal, cond, denom
-  INTEGER                :: id, idr, igcd
-
-  id      = igcd(n,m)
-  idr     = igcd(2*n+m,2*m+n)
 
   CALL CutLineK(n,m,muk11,muk22,mukp11,mukp22)
   muii = 0
@@ -713,7 +712,7 @@ IMPLICIT NONE
           mu22 = mukp22
       END IF
 
-! muii(:,k) <-> Ekk
+! muii(:,k) <-> E k-1,k-1
       IF (mu11 > mu22) THEN
           dk1 = 1
           dk2 = -1
@@ -748,10 +747,8 @@ IMPLICIT NONE
           !PRINT*, muii(1,even), 'max', MAXVAL(muii(1,1:nhex/2+1))
       END DO
 
-      max_position = MAXLOC(muii(1,:))
-      !PRINT*, max_position(1)
+      mpos = MAXLOC(muii(1,:),1)
 
-      mpos = max_position(1)
       IF ( cond == 1 ) THEN
         dk = -1
         muii(1,mpos+1) = MINVAL(muii(1,1:mpos)) + dk
