@@ -256,20 +256,20 @@ PROGRAM cntabsorpt
      END DO
   END DO
 
-  OPEN(unit=22,file=TRIM(path)//'tube.Enk.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.Enk.'//outfile)
   DO k = 1, nk
      WRITE(22,1001) rka(k)/rka(nk),((Enk(ii,mu,k),ii=1,2),mu=1,nhex)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'electronic En(k) in tube.Enk.xyy.'//outfile
+  WRITE(*,*) 'electronic En(k) in tube.Enk.'//outfile
 
 !Write wave function
-  OPEN(unit=22,file=TRIM(path)//'tube.Znk.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.Znk.'//outfile)
   DO k = 1, nk
      WRITE(22,1001) rka(k)/rka(nk),((aimag(Znk(ii,1,mu,k)),ii=1,2),mu=1,nhex)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'electronic wavefunctions Zn(k) in tube.Znk.xyy.'//outfile
+  WRITE(*,*) 'electronic wavefunctions Zn(k) in tube.Znk.'//outfile
 
 !----------------------------------------------------------------------
 !            electron density of states (states/atom/eV)
@@ -287,12 +287,12 @@ PROGRAM cntabsorpt
   
   CALL tubeElDOS(n,m,nee,eEarray,eDOS)
       
-  OPEN(unit=22,file=TRIM(path)//'tube.elecDOS.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.elecDOS.'//outfile)
   DO ie = 1, nee
      WRITE(22,1001) eDOS(ie),eEarray(ie)
   END DO
   CLOSE(unit=22)
-  WRITE(*,*) 'DOS in tube.elecDOS.xyy.'//outfile
+  WRITE(*,*) 'DOS in tube.elecDOS.'//outfile
 
 !----------------------------------------------------------------------
 !             squared optical matrix elements (eV)
@@ -336,12 +336,12 @@ PROGRAM cntabsorpt
         END DO
      END DO
 
-     OPEN(unit=22,file=TRIM(path)//'tube.Px2k_dn.xyy.'//outfile)
+     OPEN(unit=22,file=TRIM(path)//'tube.Px2k_dn.'//outfile)
      DO k = 1, nk
         WRITE(22,1001) rka(k)/rka(nk),(Px2k(k,mu),mu=1,nhex)
      END DO
      CLOSE(unit=22)
-     WRITE(*,*) 'Px2_dn(k) in tube.Px2k_dn.xyy.'//outfile      
+     WRITE(*,*) 'Px2_dn(k) in tube.Px2k_dn.'//outfile
 
 ! upward cutting line transitions from mu --> mu+1
      DO mu = 1, nhex 
@@ -352,12 +352,12 @@ PROGRAM cntabsorpt
         END DO
      END DO
 
-     OPEN(unit=22,file=TRIM(path)//'tube.Px2k_up.xyy.'//outfile)
+     OPEN(unit=22,file=TRIM(path)//'tube.Px2k_up.'//outfile)
      DO k = 1, nk
         WRITE(22,1001) rka(k)/rka(nk),(Px2k(k,mu),mu=1,nhex)
      END DO
      CLOSE(unit=22)
-     WRITE(*,*) 'Px2_up(k) in tube.Px2k_up.xyy.'//outfile
+     WRITE(*,*) 'Px2_up(k) in tube.Px2k_up.'//outfile
       
      DEALLOCATE(Px2k)
 
@@ -374,12 +374,12 @@ PROGRAM cntabsorpt
      END DO
   END DO
 
-  OPEN(unit=22,file=TRIM(path)//'tube.Pz2k.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.Pz2k.'//outfile)
   DO k = 1, nk
      WRITE(22,1001) rka(k)/rka(nk),(Pz2k(k,mu),mu=1,nhex)
   END DO
   CLOSE(unit=22)
-  WRITE(*,*) 'Pz2(k) in tube.Pz2k.xyy.'//outfile
+  WRITE(*,*) 'Pz2(k) in tube.Pz2k.'//outfile
       
   DEALLOCATE(Pz2k)
             
@@ -439,193 +439,33 @@ PROGRAM cntabsorpt
     metal = 0
   END IF
 
+! PLASMON output ***********************************************************
+  OPEN(unit=24,file=TRIM(path)//'tube.plasmon_intra.'//TRIM(outfile)//'.csv')
+  OPEN(unit=25,file=TRIM(path)//'tube.epsZero.'//outfile)
+  OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//TRIM(outfile)//'.csv')
+
+  WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ", "Absorpt(w) "
+  WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ", "Absorpt(w) "
+  WRITE(25,*) "Efermi ", "plasmon position ", "plasmon frequency "
+
 ! ***********************************************************************
 ! FERMI LEVEL LOOP
 ! ***********************************************************************
-!
-!  OPEN(unit=24,file=TRIM(path)//'tube.plasmon_intra.'//TRIM(outfile)//'.csv')
-!  OPEN(unit=25,file=TRIM(path)//'tube.epsZero.xyy.'//outfile)
-!  OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//TRIM(outfile)//'.csv')
-!
-!  WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ",&
-!   "Absorpt(w)/Max_absorpt ", "Absorpt(w) "
-!
-!  WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ",&
-!   "Absorpt(w)/Max_absorpt ", "Absorpt(w) "
-!! ---------------------------------------------------------------------
-!! cycle over fermi level position
-!! ---------------------------------------------------------------------
-!  WRITE (*,*) '--------------------------------------------------------'
-!  WRITE (*,*) '..begin DO loop over Fermi level in range 0..3 eV'
-!  DO i=1,31
-!  WRITE (*,*) '--------------------------------------------------------'
-!
-!  Efermi = (i-1)*0.1D0
-!  WRITE (*,*) '..Fermi level: ', Efermi
-!  WRITE (fermistr, 350) Efermi
-!  WRITE (thetastr, 360) INT(laser_theta/10.)
-!  WRITE (*,*) '--------------------------------------------------------'
-!
-!! ======================================================================
-!! ========================== permittivity ==============================
-!! real and imaginary parts of dielectric permittivity
-!! ======================================================================
-!
-!  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1Part,eps2Part,eps1,eps2)
-!
-!! plot eps1(hw) (Lin's) ************************
-!  OPEN(unit=22,file=TRIM(path)//'tube.eps1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie),eps1(ie)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'real part of dielectric function in', TRIM(path)//'tube.eps1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-!
-!! plot eps2(hw) ********************************
-!  OPEN(unit=22,file=TRIM(path)//'tube.eps2.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie),eps2(ie)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'imaginary part of dielectric function in', TRIM(path)//'tube.eps2.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-!
-!! =======================================================================
-!! ========================== conductivity ===============================
-!! real and imaginary parts
-!! =======================================================================
-!  WRITE (*,*) '--------------------------------------------------------'
-!  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1Part,sigm2Part,sigm1,sigm2)
-!
-!! plot sigm1(hw) ******************************
-!  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'real part of conductivity in', TRIM(path)//'tube.sigm1.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-!
-!! plot sigm2(hw) *******************************
-!  OPEN(unit=22,file=TRIM(path)//'tube.sigm2.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'imaginary part of conductivity in', TRIM(path)//'tube.sigm2.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-!
-!! =======================================================================
-!! ============================ absorption ===============================
-!  WRITE (*,*) '--------------------------------------------------------'
-!  CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorpt)
-!
-!! plot absorpt(hw) *******************************
-!  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile)
-!  DO ie = 1, nhw_laser
-!     WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'absorption in ', TRIM(path)//'tube.absorpt.'//TRIM(thetastr)//'.'//TRIM(fermistr)//'.'//outfile
-!
-!! =======================================================================
-!! ======================= looking for plasmon ===========================
-!
-!  DO n1 = 1,2
-!    DO n2 = 1,2
-!        DO mu1 = 1, nhex/2
-!            DO mu2 = 1, nhex/2
-!
-!            CALL Absorption(nhw_laser,eps1,eps2,sigm1Part(n1,mu1,n2,mu2,:),sigm2Part(n1,mu1,n2,mu2,:),absorptPart(n1,mu1,n2,mu2,:))
-!
-!            END DO
-!         END DO
-!      END DO
-!  END DO
-!
-!  ALLOCATE(plasmonFreq(nhw_laser))
-!  plasmonFreq = 0.0
-!  plasmonExists = 0
-!  DO ie = 1, nhw_laser-1
-!      IF ( eps1(ie) * eps1(ie+1) < 0.D0 .and. eps1(ie) < 0.D0 ) THEN
-!         plasmonFreq(ie) = hw_laser(ie)
-!         WRITE(25,*) Efermi, ie, hw_laser(ie)
-!         plasmonExists = 1
-!      END IF
-!  END DO
-!
-!  DO n1 = 1,2
-!    DO n2 = 1,2
-!        DO mu1 = 1, nhex/2
-!            DO mu2 = 1, nhex/2
-!
-!! look for zeros in real part of dielectric function
-!            zeroExists = 0
-!            truePlasmon = 0
-!            DO ie = 1, nhw_laser-1
-!                IF ( eps1Part(n1,mu1,n2,mu2,ie) * eps1Part(n1,mu1,n2,mu2,ie+1) < 0.D0 ) THEN
-!                    zeroExists = 1
-!                END IF
-!            END DO
-!
-!! check if zeros are present in both n1,mu1,n2,mu2 contribution to dielectric function
-!! and also in the total dielectric function
-!            IF ( zeroExists == 1 .and. plasmonExists == 1 ) THEN
-!                place_max = MAXLOC(absorptPart(n1,mu1,n2,mu2,:),1)
-!                DO ie = 1, nhw_laser
-!                ! check if the position of n1,mu1,n2,mu2 maximum corresponds to any maximum of total absorption
-!                    IF (plasmonFreq(ie) .ne. 0.D0) THEN
-!                        IF ( ABS(place_max - ie) .le. 5 ) THEN
-!                            truePlasmon = 1
-!                            place_max = ie
-!                        END IF
-!                    END IF
-!                END DO
-!                loc_mu1 = MINLOC(ABS(muii - mu1))
-!                loc_mu2 = MINLOC(ABS(muii - mu2))
-!
-!                IF ( truePlasmon == 1 ) THEN
-!                ! check if contribution is essential
-!                    IF (MAXVAL(absorptPart(n1,mu1,n2,mu2,:))/MAXVAL(absorptPart(:,:,:,:,place_max)) > 1.D-1 ) THEN
-!                    ! the output differs for metallic and semiconducting nanotubes:
-!                    ! for SC we start counting of Ei from 1
-!                    ! for M we start counting of Ei from 0
-!                        IF ( n1 == n2 ) THEN
-!                            WRITE(24,3003) Efermi, mu1, mu2, loc_mu1(2) - metal, &
-!                            loc_mu2(2) - metal, hw_laser(place_max), &
-!                            MAXVAL(absorptPart(n1,mu1,n2,mu2,:))/MAXVAL(absorptPart(:,:,:,:,place_max)), &
-!                            absorpt(place_max)/MAXVAL(absorpt), absorpt(place_max)/(e2/h)
-!                        ELSE
-!                            WRITE(26,3003) Efermi, mu1, mu2, loc_mu1(2) - metal, &
-!                            loc_mu2(2) - metal, hw_laser(place_max), &
-!                            MAXVAL(absorptPart(n1,mu1,n2,mu2,:))/MAXVAL(absorptPart(:,:,:,:,place_max)), &
-!                            absorpt(place_max)/MAXVAL(absorpt), absorpt(place_max)/(e2/h)
-!                        END IF
-!                    END IF
-!                END IF
-!
-!            END IF
-!
-!
-!            END DO
-!        END DO
-!    END DO
-!  END DO
-!  DEALLOCATE(plasmonFreq)
-!
-!  END DO
-!
-!  WRITE (*,*) '--------------------------------------------------------'
-!  WRITE (*,*) '..end of DO loop over Fermi level'
-!  WRITE (*,*) '--------------------------------------------------------'
-!  CLOSE(unit=24)
-!  CLOSE(unit=25)
-!  CLOSE(unit=26)
-!
-!  WRITE(*,*) 'plasmon information in tube.plasmon_intra.'//TRIM(outfile)//'.csv ', 'and ', &
-!  'tube.plasmon_inter.'//TRIM(outfile)//'.csv '
-!  WRITE (*,*) '--------------------------------------------------------'
+! ---------------------------------------------------------------------
+! cycle over fermi level position
+! ---------------------------------------------------------------------
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..begin DO loop over Fermi level in range 0..2 eV'
+  DO i=1,5
+  WRITE (*,*) '--------------------------------------------------------'
 
-! ***********************************************************************
-! END OF FERMI LEVEL LOOP
-! ***********************************************************************
+  Efermi = (i-1)*0.5D0
+  WRITE (*,*) '..Fermi level: ', Efermi
+  WRITE (fermistr, 350) Efermi
+  WRITE (thetastr, 360) INT(laser_theta/10.)
+  CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(fermistr) )
+  path = './tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(fermistr)//'/'
+  WRITE (*,*) '--------------------------------------------------------'
 
 ! ======================================================================
 ! ========================== permittivity ==============================
@@ -636,39 +476,39 @@ PROGRAM cntabsorpt
   eps1Part,eps2Part,eps1,eps2)
 
 ! plot eps1(hw) *********************************
-  OPEN(unit=22,file=TRIM(path)//'tube.eps1.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.eps1.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps1(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'real part of dielectric function in tube.eps1.xyy.'//outfile
+  WRITE(*,*) 'real part of dielectric function in tube.eps1.'//outfile
 
 ! plot eps2(hw) ********************************
-  OPEN(unit=22,file=TRIM(path)//'tube.eps2.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.eps2.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps2(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.xyy.'//outfile
+  WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.'//outfile
 
 
   CALL DielPermittivityKrKr(nhw_laser,ebg,hw_laser,eps1,eps2,eps1kk,eps2kk)   !Kramers-Kronig
 
 ! plot eps1(hw) (Kramers-Kronig) ****************
-  OPEN(unit=22,file=TRIM(path)//'tube.eps1kk.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.eps1kk.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps1kk(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'Kramers-Kronig real part of dielectric function in tube.eps1kk.xyy.'//outfile
+  WRITE(*,*) 'Kramers-Kronig real part of dielectric function in tube.eps1kk.'//outfile
 
 ! plot eps2(hw) (Kramers-Kronig) ***************
-  OPEN(unit=22,file=TRIM(path)//'tube.eps2kk.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.eps2kk.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eps2kk(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'Kramers-Kronig imaginary part of dielectric function in tube.eps2kk.xyy.'//outfile
+  WRITE(*,*) 'Kramers-Kronig imaginary part of dielectric function in tube.eps2kk.'//outfile
 
 ! =======================================================================
 ! ======================= absorption coefficient ========================
@@ -678,12 +518,12 @@ PROGRAM cntabsorpt
   CALL imagDielAlpha(nhw_laser,hw_laser,eps2,refrac,alpha)
 
 ! plot absorption alpha(hw) ********************
-  OPEN(unit=22,file=TRIM(path)//'tube.alpha.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.alpha.'//outfile)
   DO ie = 1,nhw_laser
      WRITE(22,1001) hw_laser(ie),alpha(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'alpha(hw) in tube.alpha.xyy.'//outfile
+  WRITE(*,*) 'alpha(hw) in tube.alpha.'//outfile
 
 ! =======================================================================
 ! ======================= Electron energy loss spectra  =================
@@ -693,12 +533,12 @@ PROGRAM cntabsorpt
   CALL EELS(nhw_laser,eps1,eps2,eelspec)
 
 ! plot eels(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.eels.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.eels.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie),eelspec(ie)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'eels in tube.eels.xyy.'//outfile
+  WRITE(*,*) 'eels in tube.eels.'//outfile
 
 ! =======================================================================
 ! ========================== conductivity ===============================
@@ -709,20 +549,20 @@ PROGRAM cntabsorpt
   sigm1Part,sigm2Part,sigm1,sigm2)
 
 ! plot sigm1(hw) ******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), sigm1(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'real part of conductivity in tube.sigm1.xyy.'//outfile
+  WRITE(*,*) 'real part of conductivity in tube.sigm1.'//outfile
 
 ! plot sigm2(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.sigm2.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.sigm2.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), sigm2(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.xyy.'//outfile
+  WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.'//outfile
 
 ! imaginary part of intraband conductivity
 ! =======================================================================
@@ -730,24 +570,24 @@ PROGRAM cntabsorpt
   CALL DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1_intra,sigm2_intra)
 
 ! plot sigm2_intra(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.sigm2_intra.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.sigm2_intra.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), sigm2_intra(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of intraband conductivity in tube.sigm2_intra.xyy.'//outfile
+  WRITE(*,*) 'imaginary part of intraband conductivity in tube.sigm2_intra.'//outfile
 
 ! imaginary part of interband conductivity
 ! =======================================================================
   CALL DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1_inter,sigm2_inter)
 
 ! plot sigm2_inter(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.sigm2_inter.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.sigm2_inter.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), sigm2_inter(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'imaginary part of interband conductivity in tube.sigm2_inter.xyy.'//outfile
+  WRITE(*,*) 'imaginary part of interband conductivity in tube.sigm2_inter.'//outfile
 
 ! =======================================================================
 ! ============================ absorption ===============================
@@ -756,16 +596,15 @@ PROGRAM cntabsorpt
   CALL Absorption(nhw_laser,eps1,eps2,sigm1,sigm2,absorpt)
 
 ! plot absorpt(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.xyy.'//outfile)
+  OPEN(unit=22,file=TRIM(path)//'tube.absorpt.'//outfile)
   DO ie = 1, nhw_laser
      WRITE(22,1001) hw_laser(ie), absorpt(ie)/(e2/h)
   ENDDO
   CLOSE(unit=22)
-  WRITE(*,*) 'absorption in tube.absorpt.xyy.'//outfile
+  WRITE(*,*) 'absorption in tube.absorpt.'//outfile
 
-! -----------------------------------------------------------------------------------------------
-! ======================= explore contributions from different cutting lines ====================
-! -----------------------------------------------------------------------------------------------
+!! =======================================================================
+!! ======================= looking for plasmon ===========================
   WRITE(*,*) '-------------------------------------------------------'
   WRITE(*,*) '..LOOP over all possible transitions'
 
@@ -781,17 +620,13 @@ PROGRAM cntabsorpt
       END DO
   END DO
 
-  OPEN(unit=24,file=TRIM(path)//'tube.plasmon_intra.'//TRIM(outfile)//'.csv')
-  OPEN(unit=25,file=TRIM(path)//'tube.epsZero.xyy.'//outfile)
-  OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//TRIM(outfile)//'.csv')
-
-  WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ",&
-   "Absorpt(w)/Max_absorpt ", "Absorpt(w) "
-
-  WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ",&
-   "Absorpt(w)/Max_absorpt ", "Absorpt(w) "
-
-  WRITE(25,*) "Efermi ", "plasmon position ", "plasmon frequency "
+  ! CONTRIBUTIONS output *****************************************************
+  OPEN(unit=122,file=TRIM(path)//'tube.eps1Part.'//outfile)
+  OPEN(unit=123,file=TRIM(path)//'tube.eps2Part.'//outfile)
+  OPEN(unit=124,file=TRIM(path)//'tube.sigm1Part.'//outfile)
+  OPEN(unit=125,file=TRIM(path)//'tube.sigm2Part.'//outfile)
+  OPEN(unit=126,file=TRIM(path)//'tube.absorptPart.'//outfile)
+  ! **************************************************************************
 
   ALLOCATE(plasmonFreq(nhw_laser))
   plasmonFreq = 0.0
@@ -845,18 +680,44 @@ PROGRAM cntabsorpt
                             WRITE(24,3003) Efermi, mu1, mu2, loc_mu1(2) - metal, &
                             loc_mu2(2) - metal, hw_laser(place_max), &
                             MAXVAL(absorptPart(n1,mu1,n2,mu2,:))/MAXVAL(absorptPart(:,:,:,:,place_max)), &
-                            absorpt(place_max)/MAXVAL(absorpt), absorpt(place_max)/(e2/h)
+                            absorpt(place_max)/(e2/h)
                         ELSE
                             WRITE(26,3003) Efermi, mu1, mu2, loc_mu1(2) - metal, &
                             loc_mu2(2) - metal, hw_laser(place_max), &
                             MAXVAL(absorptPart(n1,mu1,n2,mu2,:))/MAXVAL(absorptPart(:,:,:,:,place_max)), &
-                            absorpt(place_max)/MAXVAL(absorpt), absorpt(place_max)/(e2/h)
+                            absorpt(place_max)/(e2/h)
                         END IF
                     END IF
                 END IF
 
             END IF
 
+! ------------------------------------------------------------------------
+! HERE the output STARTS for contributions *******************************
+! ------------------------------------------------------------------------
+    IF ( zeroExists == 1 ) THEN
+        DO ie = 1, nhw_laser
+            WRITE(122,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+            hw_laser(ie), eps1Part(n1,mu1,n2,mu2,ie)
+            WRITE(123,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+            hw_laser(ie), eps2Part(n1,mu1,n2,mu2,ie)
+            WRITE(124,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+            hw_laser(ie), sigm1Part(n1,mu1,n2,mu2,ie)/(e2/h)
+            WRITE(125,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+            hw_laser(ie), sigm2Part(n1,mu1,n2,mu2,ie)/(e2/h)
+            WRITE(126,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+            hw_laser(ie), absorptPart(n1,mu1,n2,mu2,ie)/(e2/h)
+        ENDDO
+        WRITE(122,1001) ' '
+        WRITE(123,1001) ' '
+        WRITE(124,1001) ' '
+        WRITE(125,1001) ' '
+        WRITE(126,1001) ' '
+    END IF
+
+! ------------------------------------------------------------------------
+! HERE the output ENDS for contributions *********************************
+! ------------------------------------------------------------------------
 
             END DO
         END DO
@@ -864,74 +725,45 @@ PROGRAM cntabsorpt
   END DO
   DEALLOCATE(plasmonFreq)
 
+  CLOSE(unit=122)
+  CLOSE(unit=123)
+  CLOSE(unit=124)
+  CLOSE(unit=125)
+  CLOSE(unit=126)
+
   WRITE(*,*) '..End of LOOP '
 
   WRITE(*,*) '-------------------------------------------------------'
-  WRITE(*,*) 'plasmon information in tube.plasmon_intra.'//TRIM(outfile)//'.csv ', 'and ', &
-  'tube.plasmon_inter.'//TRIM(outfile)//'.csv'
 
-  WRITE(*,*) '-------------------------------------------------------'
-
-  mn = nhex/2
-  mnj = nhex/2
   ! plot eps1Part(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.eps1Part.xyy.'//outfile)
-  DO j = 1,mnj
-    DO ie = 1, nhw_laser
-        WRITE(22,1001) hw_laser(ie), eps1Part(n1,1:mn,n2,j,ie)
-    ENDDO
-    WRITE(22,1001) ' '
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'different contributions in eps1 in tube.eps1Part.xyy.'//outfile
-
+  WRITE(*,*) 'different contributions in eps1 in tube.eps1Part.'//outfile
   ! plot eps2Part(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.eps2Part.xyy.'//outfile)
-  DO j = 1,mnj
-      DO ie = 1, nhw_laser
-         WRITE(22,1001) hw_laser(ie), eps2Part(n1,1:mn,n2,j,ie)
-      ENDDO
-      WRITE(22,1001) ' '
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'different contributions in eps2 in tube.eps2Part.xyy.'//outfile
-
+  WRITE(*,*) 'different contributions in eps2 in tube.eps2Part.'//outfile
   ! plot sigm1Part(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.sigm1Part.xyy.'//outfile)
-  DO j = 1,mnj
-      DO ie = 1, nhw_laser
-         WRITE(22,1001) hw_laser(ie), sigm1Part(n1,1:mn,n2,j,ie)/(e2/h)
-      ENDDO
-      WRITE(22,1001) ' '
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'different contributions in sigm1 in tube.sigm1Part.xyy.'//outfile
-
+  WRITE(*,*) 'different contributions in sigm1 in tube.sigm1Part.'//outfile
   ! plot sigm2Part(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.sigm2Part.xyy.'//outfile)
-  DO j = 1,mnj
-      DO ie = 1, nhw_laser
-         WRITE(22,1001) hw_laser(ie), sigm2Part(n1,1:mn,n2,j,ie)/(e2/h)
-      ENDDO
-      WRITE(22,1001) ' '
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'different contributions in sigm2 in tube.sigm2Part.xyy.'//outfile
-
+  WRITE(*,*) 'different contributions in sigm2 in tube.sigm2Part.'//outfile
   ! plot absorptPart(hw) *******************************
-  OPEN(unit=22,file=TRIM(path)//'tube.absorptPart.xyy.'//outfile)
-  DO j = 1,mnj
-      DO ie = 1, nhw_laser
-         WRITE(22,1001) hw_laser(ie), absorptPart(n1,1:mn,n2,j,ie)/(e2/h)
-      ENDDO
-      WRITE(22,1001) ' '
-  ENDDO
-  CLOSE(unit=22)
-  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.xyy.'//outfile
+  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.'//outfile
 
-! -----------------------------------------------------------------------------------------------
-! =================== END of exploring contributions from different cutting lines ===============
-! -----------------------------------------------------------------------------------------------
+  END DO
+
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..end of DO loop over Fermi level'
+  WRITE (*,*) '--------------------------------------------------------'
+
+! ***********************************************************************
+! END OF FERMI LEVEL LOOP
+! ***********************************************************************
+
+  CLOSE(unit=24)
+  CLOSE(unit=25)
+  CLOSE(unit=26)
+
+  WRITE(*,*) 'plasmon information in tube.plasmon_intra.'//TRIM(outfile)//'.csv ', 'and ', &
+  'tube.plasmon_inter.'//TRIM(outfile)//'.csv '
+  WRITE (*,*) '--------------------------------------------------------'
+
 
 ! ============= part of code to check the calculations ================================
 ! *************** please, remove it later *********************************************
@@ -954,7 +786,7 @@ PROGRAM cntabsorpt
 !
 !   PRINT*, 'max hw', hw_laser(max_position(4)), 'min hw',  hw_laser(min_position(4))
 
-! OPEN(unit=22,file=TRIM(path)//'tube.test_max.xyy.'//outfile)
+! OPEN(unit=22,file=TRIM(path)//'tube.test_max.'//outfile)
 ! DO k = 1, nk
 !    WRITE(22,1001) rka(k)/rka(nk), &
 !    difFermiDist(max_position(1), max_position(2), max_position(3), k), &
@@ -962,9 +794,9 @@ PROGRAM cntabsorpt
 !    diracAvgFunc(max_position(1), max_position(2), max_position(3), k)
 ! ENDDO
 ! CLOSE(unit=22)
-! WRITE(*,*) 'test max in file tube.test_max.xyy.'//outfile
+! WRITE(*,*) 'test max in file tube.test_max.'//outfile
 !
-! OPEN(unit=22,file=TRIM(path)//'tube.test_min.xyy.'//outfile)
+! OPEN(unit=22,file=TRIM(path)//'tube.test_min.'//outfile)
 ! DO k = 1, nk
 !    WRITE(22,1001) rka(k)/rka(nk), &
 !    difFermiDist(min_position(1), min_position(2), min_position(3), k), &
@@ -972,7 +804,7 @@ PROGRAM cntabsorpt
 !    diracAvgFunc(min_position(1), min_position(2), min_position(3), k)
 ! ENDDO
 ! CLOSE(unit=22)
-! WRITE(*,*) 'test min in file tube.test_min.xyy.'//outfile
+! WRITE(*,*) 'test min in file tube.test_min.'//outfile
 
 ! DEALLOCATE(difFermiDist,matrElementSq,diracAvgFunc)
 
@@ -1055,12 +887,12 @@ PROGRAM cntabsorpt
 !    maxAbsDif(i) = MAXVAL(ABS(eps2aii(i,1:nhw_laser) - eps2aii(10,1:nhw_laser)))
 !  END DO
 !
-!  OPEN(unit=22,file='tube.divergence.xyy.'//outfile)
+!  OPEN(unit=22,file='tube.divergence.'//outfile)
 !  DO i=1,9
 !     WRITE(22,1001) kCoef(i), divergence(i), maxAbsDif(i)
 !  ENDDO
 !  CLOSE(unit=22)
-!  WRITE(*,*) 'divergence in file tube.divergence.xyy.'//outfile
+!  WRITE(*,*) 'divergence in file tube.divergence.'//outfile
 !
 !  DEALLOCATE(eps2aii)
 
