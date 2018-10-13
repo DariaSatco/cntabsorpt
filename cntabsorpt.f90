@@ -905,6 +905,24 @@ PROGRAM cntabsorpt
  WRITE(*,*) '====================================================='
  WRITE(*,*) 'Fermi level: ', 'from input', Efermi, 'from doping', fermiLevel(n,m,Tempr,doping)
 
+! TEST cycle to find chyralities **********************************
+!PEN(unit=22,file='tube.chyralities')
+!O m = 0,30
+!   DO n = m,30
+!
+!    IF ( n == 0 ) CYCLE
+!    diameter = tubeDiam(n,m)/10 !nm
+!    IF ( diameter .ge. 0.5D0 .and. diameter .le. 2.D0 ) THEN
+!       WRITE(22,*) n,m
+!    END IF
+!
+!   END DO
+!ND DO
+!LOSE(unit=22)
+!RITE(*,*) 'tube chyralities in tube.chyralities '
+
+
+! ****************************************************************
 
 !----------------------------------------------------------------------
 !                          format statements
