@@ -162,7 +162,7 @@ eps0(:) = ebg
 END SUBROUTINE DielPermittivityDr
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk,cDipole)
+SUBROUTINE tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk1,rk2,cDipole)
 !===============================================================================
 ! optical dipole matrix element (1/Angstrom) for (n,m) carbon nanotube
 !       D = < n1,mu1,rk | gradient | n2,mu2,rk > (1/Angstroms)
@@ -175,7 +175,8 @@ SUBROUTINE tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk,cDipole)
 !  n2            ket vector electronic state (n=1,2)
 !  mu2           ket vector electronic state manifold (0...NHexagon-1)
 !
-!  rk            electronic state k (1/A) (-pi/T < k < pi/T)
+!  rk1           bra electronic state k (1/A) (-pi/T < k < pi/T)
+!  rk2           ket electronic state k (1/A) (-pi/T < k < pi/T)
 ! Output       :
 !  cDipole(3)    complex dipole matrix element (1/Angstroms)
 !===============================================================================
@@ -183,7 +184,7 @@ SUBROUTINE tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk,cDipole)
 
 ! input variables
   INTEGER, INTENT(in)    :: n, m, n1, mu1, n2, mu2
-  REAL(8), INTENT(in)    :: rk
+  REAL(8), INTENT(in)    :: rk1, rk2
 
 ! output variable
   COMPLEX(8),INTENT(out) :: cDipole(3)
@@ -198,9 +199,8 @@ SUBROUTINE tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk,cDipole)
   CALL reducedCutLine(n,m,mu1,mmu1)
   CALL reducedCutLine(n,m,mu2,mmu2)
 
-  rkk = rk
-  CALL tbDipolXY(n,m,n1,mmu1,n2,mmu2,rkk,xDipole,yDipole)
-  CALL tbDipolZ (n,m,n1,mmu1,n2,mmu2,rkk,zDipole)
+  CALL tbDipolXY(n,m,n1,mmu1,n2,mmu2,rk1,xDipole,yDipole) ! ki == kf for perpendicular polarization
+  CALL tbDipolZDr(n,m,n1,mmu1,n2,mmu2,rk1,rk2,zDipole)
 
   cDipole(1) = xDipole
   cDipole(2) = yDipole
@@ -211,7 +211,7 @@ SUBROUTINE tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk,cDipole)
 END SUBROUTINE tbDipoleMXDr
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk,zDipole)
+SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
 !===============================================================================
 ! this subroutine calls tbDipolZ2
 ! z component of optical dipole matrix element for (n,m) carbon nanotube
@@ -225,7 +225,8 @@ SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk,zDipole)
 !  n2            ket vector electronic state (n=1,2)
 !  mu2           ket vector electronic state manifold (0...NHexagon-1)
 !
-!  rk            electronic state k (1/A) (-pi/T < k < pi/T)
+!  rk1           bra electronic state k (1/A) (-pi/T < k < pi/T)
+!  rk2           ket electronic state k (1/A) (-pi/T < k < pi/T)
 ! Output       :
 !  zDipole       complex dipole matrix element (1/Angstroms)
 !===============================================================================
@@ -234,7 +235,7 @@ SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk,zDipole)
 
 ! input variables
   INTEGER, INTENT(in)    :: n, m, n1, mu1, n2, mu2
-  REAL(8), INTENT(in)    :: rk
+  REAL(8), INTENT(in)    :: rk1,rk2
 
 ! output variable
   COMPLEX(8),INTENT(out) :: zDipole
@@ -250,11 +251,11 @@ SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk,zDipole)
   END IF
 
 ! calculate z component of dipole vector (1/Angstroms)
-  CALL tbDipolZ2(n,m,n1,mu1,n2,mu2,rk,zDipole)
+  CALL tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
 
 ! fix sign convention relative to neighboring points in k space
-  CALL tbDipolZ2(n,m,n1,mu1,n2,mu2,rk-rktol,zD1)
-  CALL tbDipolZ2(n,m,n1,mu1,n2,mu2,rk+rktol,zD2)
+  CALL tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1-rktol,rk2-rktol,zD1)
+  CALL tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1+rktol,rk2+rktol,zD2)
 
   rd  = REAL(zDipole)
   rd1 = REAL(zD1)
@@ -274,7 +275,7 @@ SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk,zDipole)
 END SUBROUTINE tbDipolZDr
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk,zDipole)
+SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
 !===============================================================================
 ! this is the kernel of tbDipolZ subroutine
 ! z component of optical dipole matrix element for (n,m) carbon nanotube
@@ -288,7 +289,8 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk,zDipole)
 !  n2            ket vector electronic state (n=1,2)
 !  mu2           ket vector electronic state manifold (0...NHexagon-1)
 !
-!  rk            electronic state k (1/A) (-pi/T < k < pi/T)
+!  rk1           bra electronic state k (1/A) (-pi/T < k < pi/T)
+!  rk2           ket electronic state k (1/A) (-pi/T < k < pi/T)
 ! Output       :
 !  zDipole       complex dipole matrix element (1/Angstroms)
 !===============================================================================
@@ -297,7 +299,7 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk,zDipole)
 
 ! input variables
   INTEGER, INTENT(in)    :: n, m, n1, mu1, n2, mu2
-  REAL(8), INTENT(in)    :: rk
+  REAL(8), INTENT(in)    :: rk1, rk2
 
 ! output variable
   COMPLEX(8),INTENT(out) :: zDipole
@@ -306,8 +308,8 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk,zDipole)
   INTEGER, SAVE, DIMENSION(0:4) :: nvecs = (/ 1, 3, 6, 3, 6 /)
   COMPLEX(8), SAVE       :: ci = (0.D0,1.D0)
 
-  REAL(8)                :: Ek(2)   ! energy band
-  COMPLEX(8)             :: Zk(2,2) ! wf. coeff.
+  REAL(8)                :: Ek1(2),Ek2(2)   ! energy band
+  COMPLEX(8)             :: Zk1(2,2),Zk2(2,2) ! wf. coeff.
   INTEGER                :: ier, iatom, jatom, nn, ivec, j1, j2, NNatom
   REAL(8)                :: rkk, phi, dipole
   COMPLEX(8)             :: c1, c2
@@ -332,10 +334,15 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk,zDipole)
      RETURN
   END IF
 
-! electronic pi orbitals (mu1,k)
-  rkk = rk
+! electronic pi orbitals (mu1,k1)
+  rkk = rk1
   IF (ABS(rkk) < rktol) rkk = rktol
-  CALL etbTubeBand(n,m,mu1,rkk,Ek,Zk)
+  CALL etbTubeBand(n,m,mu1,rkk,Ek1,Zk1)
+
+! electronic pi orbitals (mu2,k2)
+  rkk = rk2
+  IF (ABS(rkk) < rktol) rkk = rktol
+  CALL etbTubeBand(n,m,mu2,rkk,Ek2,Zk2)
 
 ! compute z component of dipole vector (1/Angstroms)
   zDipole = 0.D0
@@ -344,13 +351,14 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk,zDipole)
         DO ivec = 1, nvecs(nn)
 
            CALL NNj1j2(iatom,ivec,nn, j1,j2)
-           CALL phaseFactor(n,m,j1,j2,rk,mu1,phi)
+           CALL phaseFactor(n,m,j1,j2,rk1,mu1,phi1)
+           CALL phaseFactor(n,m,j1,j2,rk2,mu1,phi2)
 
            jatom = NNatom(iatom,nn)
            CALL atomDipolZ(n,m,iatom,0,0,jatom,j1,j2,dipole)
 
            c1 = CONJG( Zk(iatom,n1) )
-           c2 = Zk(jatom,n2) * CDEXP(ci*phi)
+           c2 = Zk(jatom,n2) * CDEXP(ci*(phi2-phi1))
 
            zDipole = zDipole + c1*c2*dipole
 
@@ -361,162 +369,6 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk,zDipole)
   RETURN
 
 END SUBROUTINE tbDipolZ2Dr
-!*******************************************************************************
-!*******************************************************************************
-SUBROUTINE tbDipolXYDr(n,m,n1,mu1,n2,mu2,rk,xDipole,yDipole)
-!===============================================================================
-! xy component of optical dipole matrix element for (n,m) carbon tube
-!        Dx = < n1,mu1,rk | d/dx | n2,mu2,rk > (1/Angstroms)
-!        Dy = < n1,mu1,rk | d/dy | n2,mu2,rk > (1/Angstroms)
-!-------------------------------------------------------------------------------
-! Input        :
-!  n,m           chiral vector coordinates in (a1,a2)
-!  n1            bra vector electronic state (n=1,2)
-!  mu1           bra vector electronic state manifold (0...NHexagon-1)
-!
-!  n2            ket vector electronic state (n=1,2)
-!  mu2           ket vector electronic state manifold (0...NHexagon-1)
-!
-!  rk            electronic state k (1/A) (-pi/T < k < pi/T)
-! Output       :
-!  xDipole       x component of dipole matrix element (1/Angstroms)
-!  yDipole       y component of dipole matrix element (1/Angstroms)
-!===============================================================================
-  IMPLICIT NONE
-  REAL(8), PARAMETER     :: rktol = .0005D0
-
-! input variables
-  INTEGER, INTENT(in)    :: n, m, n1, mu1, n2, mu2
-  REAL(8), INTENT(in)    :: rk
-
-! output variables
-  COMPLEX(8),INTENT(out) :: xDipole, yDipole
-
-! working variables
-  INTEGER, SAVE, DIMENSION(0:4) :: nvecs = (/ 1, 3, 6, 3, 6 /)
-  COMPLEX(8), SAVE              :: ci = (0.D0,1.D0)
-
-  REAL(8),    DIMENSION(2)      :: Ek1, Ek2  !(2)
-  COMPLEX(8), DIMENSION(2,2)    :: Zk1, Zk2  !(2,2)
-
-  COMPLEX(8)                    :: c1, c2
-  REAL(8)                       :: dipole(3)
-
-  INTEGER                :: nhex, nHexagon, ier, isel, iflip
-  INTEGER                :: mmu1,mmu2,nn1,nn2
-  INTEGER                :: iatom, jatom, nn, ivec, j1, j2, NNatom
-
-  REAL(8)                :: rkk,phi
-
-! check input for errors
-  nhex=nHexagon(n,m)
-
-  ier=0
-  IF (n1 /= 1 .AND. n1 /= 2) THEN
-     ier = 1
-     WRITE (*,*) 'tbDipolXY err: invalid n1:', n1
-  END IF
-
-  IF (mu1 < 1 .OR. mu1 > nhex) THEN
-     ier = 1
-     WRITE (*,*) 'tbDipolXY err: invalid mu1:', mu1
-  END IF
-
-  IF (n2 /= 1 .AND. n2 /= 2) THEN
-     ier = 1
-     WRITE (*,*) 'tbDipolXY err: invalid n2:', n2
-  END IF
-
-  IF(mu2 < 1 .OR. mu2 > nhex) THEN
-     ier = 1
-     WRITE(*,*) 'tbDipolXY err: invalid mu2:', mu2
-  END IF
-
-  IF (ier /= 0) STOP
-
-! initialize xDipole and yDipole
-  xDipole = 0.D0
-  yDipole = 0.D0
-
-! selection rule
-! Define states (nn1,mmu1) and (nn2,mmu2) so that mmu2 = mmu1+1
-  isel  = 0
-  iflip = 0
-
-  IF (mu2 == mu1+1) THEN
-     isel = 1
-     mmu1 = mu1
-     mmu2 = mu2
-     nn1  = n1
-     nn2  = n2
-  END IF
-
-  IF (mu2 == mu1-1) THEN
-     isel  = 1
-     iflip = 1 ! exchange bra and ket vectors
-     mmu1  = mu2
-     mmu2  = mu1
-     nn1   = n2
-     nn2   = n1
-  END IF
-
-  IF (mu1 == nhex .AND. mu2 == 1) THEN
-     isel = 1
-     mmu1 = mu1
-     mmu2 = mu2
-     nn1  = n1
-     nn2  = n2
-  END IF
-
-  IF (mu1 == 1 .AND. mu2 == nhex) THEN
-     isel  = 1
-     iflip = 1 ! exchange bra and ket vectors
-     mmu1  = mu2
-     mmu2  = mu1
-     nn1   = n2
-     nn2   = n1
-  END IF
-
-  IF (isel /= 1) RETURN
-
-! mmu2 = mmu1+1 case
-! electronic pi orbitals (mu1,k) and (mu2,k)
-  rkk = rk
-  IF (ABS(rkk) < rktol) rkk = rktol
-  CALL etbTubeBand(n,m,mmu1,rkk,Ek1,Zk1)
-  CALL etbTubeBand(n,m,mmu2,rkk,Ek2,Zk2)
-
-! compute x and y components of dipole vector (1/Angstroms)
-  DO iatom = 1, 2
-     DO nn = 1, 4
-        DO ivec = 1, nvecs(nn)
-
-           CALL NNj1j2(iatom,ivec,nn,j1,j2)
-           CALL phaseFactor(n,m,j1,j2,-rkk,-mmu1,phi)
-
-           jatom = NNatom(iatom,nn)
-           CALL atomDipoleMX(n,m,jatom,j1,j2,iatom,0,0,dipole)
-
-           c1 = CONJG( Zk1(jatom,nn1) )
-           c2 = Zk2(iatom,nn2)*CDEXP(ci*phi)
-
-           xDipole = xDipole+c1*c2*(dipole(1)-ci*dipole(2))
-
-        END DO
-     END DO
-  END DO
-
-  xDipole = xDipole/2.D0
-  yDipole = ci*xDipole
-
-! use symmetry relation to reverse the exchange bra and ket vectors
-  IF (iflip == 1) THEN
-     xDipole = -CONJG(xDipole)
-     yDipole = -CONJG(yDipole)
-  END IF
-
-  RETURN
-END SUBROUTINE tbDipolXYDr
 !*******************************************************************************
 !*******************************************************************************
 SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1Part,sigm2Part,sigm1,sigm2)
