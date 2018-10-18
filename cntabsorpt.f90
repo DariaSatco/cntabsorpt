@@ -249,6 +249,7 @@ PROGRAM cntabsorpt
      DO k=1,nk
         rk=rka(k)
         CALL etbTubeBand(n,m,mu,rk,En,Zk)
+        !CALL stbTubeBand(n,m,mu,rk,En,Zk)
         DO ii=1,2
            Enk(ii,mu,k)=En(ii)
            Znk(ii,1:2,mu,k)=Zk(ii,1:2)
@@ -311,6 +312,7 @@ PROGRAM cntabsorpt
                 rk = rka(k)
 
                     CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
+                    !CALL stbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
 
                 END DO
 
@@ -440,10 +442,12 @@ PROGRAM cntabsorpt
     metal = 0
   END IF
 
+  WRITE (thetastr, 360) INT(laser_theta/10.)
+
 ! PLASMON output ***********************************************************
-  OPEN(unit=24,file=TRIM(path)//'tube.plasmon_intra.'//TRIM(outfile)//'.csv')
-  OPEN(unit=25,file=TRIM(path)//'tube.epsZero.'//outfile)
-  OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//TRIM(outfile)//'.csv')
+  OPEN(unit=24,file=TRIM(path)//'tube.plasmon_intra.'//'theta'//TRIM(thetastr)//'.'//TRIM(outfile)//'.csv')
+  OPEN(unit=25,file=TRIM(path)//'tube.epsZero.'//'theta'//TRIM(thetastr)//'.'//outfile)
+  OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//'theta'//TRIM(thetastr)//'.'//TRIM(outfile)//'.csv')
 
   WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ", "Absorpt(w) "
   WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ", "Absorpt(w) "
@@ -455,17 +459,16 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-  WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..begin DO loop over Fermi level in range 0..2 eV'
-  DO i=1,5
-  WRITE (*,*) '--------------------------------------------------------'
-
-  Efermi = (i-1)*0.5D0
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
+!  DO i = -25, 25
+!  WRITE (*,*) '--------------------------------------------------------'
+!
+!  Efermi = i * 0.1D0
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
-  WRITE (thetastr, 360) INT(laser_theta/10.)
-  CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(fermistr) )
-  path = './tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(fermistr)//'/'
+  CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr)) )
+  path = './tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr))//'/'
   WRITE (*,*) '--------------------------------------------------------'
 
 ! ======================================================================
@@ -666,6 +669,9 @@ PROGRAM cntabsorpt
                     IF (plasmonFreq(ie) .ne. 0.D0) THEN
                         IF ( ABS(place_max - ie) .le. 5 ) THEN
                             truePlasmon = 1
+                            ! probably it's better to take place_plasmon = ie and leave the value of place_max as maximum
+                            ! of certain contribution
+                            ! then we can filter contributions by condition = 1
                             place_max = ie
                         END IF
                     END IF
@@ -749,11 +755,11 @@ PROGRAM cntabsorpt
 !  ! plot absorptPart(hw) *******************************
 !  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.'//outfile
 
-  END DO
-
-  WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..end of DO loop over Fermi level'
-  WRITE (*,*) '--------------------------------------------------------'
+!  END DO
+!
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..end of DO loop over Fermi level'
+!  WRITE (*,*) '--------------------------------------------------------'
 
 ! ***********************************************************************
 ! END OF FERMI LEVEL LOOP
@@ -933,7 +939,7 @@ PROGRAM cntabsorpt
 1001  FORMAT(901(1X,G13.5))
 1002  FORMAT(4F8.4)
 2002  FORMAT(1A20)
-350   FORMAT(F3.1)
+350   FORMAT(F4.1)
 360   FORMAT(I1)
 3003  FORMAT(F8.2,4I8,6F8.3)
 

@@ -18,9 +18,9 @@ all: clean elopph
 %.o: %.f
 	$(FC) -c $(F90FLAGS) $< -o $@
 
-MODS = globvar.o
-OBJS = libMath.o swntpar.o swntstruct.o
-TUBE = libswntElec.o libswntOpt.o
+MODS = globvar.mod
+OBJS = globvar.o libMath.o swntpar.o swntstruct.o
+TUBE = libswntElec.o libswntOpt.o libDrudeOpt.o libswntSTB.o
 
 elopph: $(OBJS) $(MODS) $(TUBE)
 	$(FC) $(OBJS) $(MODS) $(TUBE) \
