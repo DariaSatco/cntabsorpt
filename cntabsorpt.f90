@@ -88,7 +88,8 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE    :: sigm2_intra(:)  !(nhw_laser)
   REAL(8), ALLOCATABLE    :: sigm2_inter(:)  !(nhw_laser)
   REAL(8), ALLOCATABLE    :: absorpt(:)      !(nhw_laser)
-  COMPLEX(8), ALLOCATABLE :: cDipole(:,:,:,:,:,:) !(3,nk,2,nhex,2,nhex)
+  !COMPLEX(8), ALLOCATABLE :: cDipole(:,:,:,:,:,:) !(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), ALLOCATABLE :: cDipole(:,:,:,:,:,:,:) !(3,nk,2,nhex,nk,2,nhex)
   REAL(8), ALLOCATABLE    :: absorptPart(:,:,:,:,:)
   REAL(8), ALLOCATABLE    :: eps1Part(:,:,:,:,:)
   REAL(8), ALLOCATABLE    :: eps2Part(:,:,:,:,:)
@@ -106,12 +107,14 @@ PROGRAM cntabsorpt
   INTEGER                :: max_position(5), min_position(5)
 
   REAL                   :: divergence(9), kCoef(10), maxAbsDif(9)
-  INTEGER                :: i, mn, j, mnj, l
+  INTEGER                :: i, mn, j, mnj, l, k1, k2
   REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
   REAL(8)                :: diameter, area, prediel, precond, tubeDiam, rkii
   INTEGER, ALLOCATABLE   :: muii(:,:)
   INTEGER                :: place_max, zeroExists, metal, loc_mu1(2), loc_mu2(2), plasmonExists, truePlasmon, ierr
   REAL(8), ALLOCATABLE   :: plasmonFreq(:)
+  REAL(8)                :: rk1, rk2
+  COMPLEX(8)             :: test(3)
 
 !*************************************************************
 !!!!!!!!!!!!!!!!!!!!!! MAIN PROGRAM !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -227,6 +230,9 @@ PROGRAM cntabsorpt
     PRINT*, 'Number of k points was changed, nk = ', nk
   END IF
 
+! Drude test --------
+ nk = 200
+! -------------------
   ALLOCATE(rka(nk))
   ALLOCATE(Enk(2,nhex,nk))
   ALLOCATE(Znk(2,2,nhex,nk))
@@ -301,19 +307,41 @@ PROGRAM cntabsorpt
   WRITE (*,*) '====================================================='
   WRITE (*,*) '..Squared optical matrix elements (eV)'
 
-  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
+!  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
 
+!  DO n1 = 1,2
+!    DO n2 = 1,2
+!        DO mu1 = 1, nhex
+!            DO mu2 = 1, nhex
+!
+!                DO k = 1, nk
+!                rk = rka(k)
+!
+!                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
+!                    !CALL stbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
+!
+!                END DO
+!
+!            END DO
+!         END DO
+!     END DO
+!  END DO
+
+  ALLOCATE(cDipole(3,nk,2,nhex,nk,2,nhex))
+
+  cDipole = 0.D0
   DO n1 = 1,2
     DO n2 = 1,2
         DO mu1 = 1, nhex
             DO mu2 = 1, nhex
 
-                DO k = 1, nk
-                rk = rka(k)
+                DO k1 = 1, nk
+                    DO k2 = 1,nk
+                    rk1 = rka(k1)
+                    rk2 = rka(k2)
 
-                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
-                    !CALL stbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
-
+                    CALL tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk1,rk2,cDipole(1:3,k1,n1,mu1,k2,n2,mu2)) ! (1/A)
+                    END DO
                 END DO
 
             END DO
@@ -476,7 +504,9 @@ PROGRAM cntabsorpt
 ! real and imaginary parts of dielectric permittivity
 ! ======================================================================
   WRITE (*,*) '--------------------------------------------------------'
-  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,&
+!  CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,&
+!  eps1Part,eps2Part,eps1,eps2)
+  CALL DielPermittivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,&
   eps1Part,eps2Part,eps1,eps2)
 
 ! plot eps1(hw) *********************************
@@ -495,8 +525,7 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.'//outfile
 
-
-  CALL DielPermittivityKrKr(nhw_laser,ebg,hw_laser,eps1,eps2,eps1kk,eps2kk)   !Kramers-Kronig
+!  CALL DielPermittivityKrKr(nhw_laser,ebg,hw_laser,eps1,eps2,eps1kk,eps2kk)   !Kramers-Kronig
 
 ! =========== KRAMERS-KRONIG =====================
 ! plot eps1(hw) (Kramers-Kronig) ****************
@@ -550,7 +579,9 @@ PROGRAM cntabsorpt
 ! real and imaginary parts part
 ! =======================================================================
   WRITE (*,*) '--------------------------------------------------------'
-  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,&
+!  CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,&
+!  sigm1Part,sigm2Part,sigm1,sigm2)
+  CALL DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,&
   sigm1Part,sigm2Part,sigm1,sigm2)
 
 ! plot sigm1(hw) ******************************
@@ -704,26 +735,26 @@ PROGRAM cntabsorpt
 ! ------------------------------------------------------------------------
 ! HERE the output STARTS for contributions *******************************
 ! ------------------------------------------------------------------------
-!   IF ( zeroExists == 1 ) THEN
-!       DO ie = 1, nhw_laser
-!           WRITE(122,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!           hw_laser(ie), eps1Part(n1,mu1,n2,mu2,ie)
-!           WRITE(123,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!           hw_laser(ie), eps2Part(n1,mu1,n2,mu2,ie)
-!           WRITE(124,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!           hw_laser(ie), sigm1Part(n1,mu1,n2,mu2,ie)/(e2/h)
-!           WRITE(125,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!           hw_laser(ie), sigm2Part(n1,mu1,n2,mu2,ie)/(e2/h)
-!           WRITE(126,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!           hw_laser(ie), absorptPart(n1,mu1,n2,mu2,ie)/(e2/h)
-!       ENDDO
-!       WRITE(122,1001) ' '
-!       WRITE(123,1001) ' '
-!       WRITE(124,1001) ' '
-!       WRITE(125,1001) ' '
-!       WRITE(126,1001) ' '
-!   END IF
-!
+!  IF ( zeroExists == 1 ) THEN
+!      DO ie = 1, nhw_laser
+!          WRITE(122,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!          hw_laser(ie), eps1Part(n1,mu1,n2,mu2,ie)
+!          WRITE(123,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!          hw_laser(ie), eps2Part(n1,mu1,n2,mu2,ie)
+!          WRITE(124,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!          hw_laser(ie), sigm1Part(n1,mu1,n2,mu2,ie)/(e2/h)
+!          WRITE(125,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!          hw_laser(ie), sigm2Part(n1,mu1,n2,mu2,ie)/(e2/h)
+!          WRITE(126,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!          hw_laser(ie), absorptPart(n1,mu1,n2,mu2,ie)/(e2/h)
+!      ENDDO
+!      WRITE(122,1001) ' '
+!      WRITE(123,1001) ' '
+!      WRITE(124,1001) ' '
+!      WRITE(125,1001) ' '
+!      WRITE(126,1001) ' '
+!  END IF
+
 ! ------------------------------------------------------------------------
 ! HERE the output ENDS for contributions *********************************
 ! ------------------------------------------------------------------------

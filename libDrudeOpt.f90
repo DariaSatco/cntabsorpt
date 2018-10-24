@@ -62,7 +62,7 @@ SUBROUTINE DielPermittivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,nk,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -129,8 +129,8 @@ eps0(:) = ebg
         DO n2 = 1, 2
            DO mu2 = 1, nhex
 
-              IF (n1 == n2 .AND. mu1 == mu2) CYCLE
-              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
+              !IF (n1 == n2 .AND. mu1 == mu2) CYCLE
+              CALL RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
 ! accumulate dielectric function vs photon energy
                  DO ie = 1, ne
                     IF (hw(ie) .le. ptol) THEN
@@ -195,11 +195,16 @@ SUBROUTINE tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk1,rk2,cDipole)
   COMPLEX(8)             :: xDipole, yDipole, zDipole
 
   cDipole = 0.D0
-
   CALL reducedCutLine(n,m,mu1,mmu1)
   CALL reducedCutLine(n,m,mu2,mmu2)
 
-  CALL tbDipolXY(n,m,n1,mmu1,n2,mmu2,rk1,xDipole,yDipole) ! ki == kf for perpendicular polarization
+  IF (rk1 == rk2) THEN
+    CALL tbDipolXY(n,m,n1,mmu1,n2,mmu2,rk1,xDipole,yDipole) ! ki == kf for perpendicular polarization
+  ELSE
+    xDipole = 0.D0
+    yDipole = 0.D0
+  END IF
+
   CALL tbDipolZDr(n,m,n1,mmu1,n2,mmu2,rk1,rk2,zDipole)
 
   cDipole(1) = xDipole
@@ -246,6 +251,11 @@ SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
 
 ! selection rule
   IF (mu1 /= mu2) THEN
+     zDipole = 0.D0
+     RETURN
+  END IF
+
+  IF (n1 /= n2 .and. rk1 /= rk2) THEN
      zDipole = 0.D0
      RETURN
   END IF
@@ -334,6 +344,11 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
      RETURN
   END IF
 
+  IF (n1 /= n2 .and. rk1 /= rk2) THEN
+     zDipole = 0.D0
+     RETURN
+  END IF
+
 ! electronic pi orbitals (mu1,k1)
   rkk = rk1
   IF (ABS(rkk) < rktol) rkk = rktol
@@ -350,15 +365,14 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
      DO nn = 1, 4
         DO ivec = 1, nvecs(nn)
 
-           CALL NNj1j2(iatom,ivec,nn, j1,j2)
-           CALL phaseFactor(n,m,j1,j2,rk1,mu1,phi1)
-           CALL phaseFactor(n,m,j1,j2,rk2,mu1,phi2)
+           CALL NNj1j2(iatom,ivec,nn,j1,j2)
+           CALL phaseFactor(n,m,j1,j2,-rk1,-mu1,phi)
 
            jatom = NNatom(iatom,nn)
-           CALL atomDipolZ(n,m,iatom,0,0,jatom,j1,j2,dipole)
+           CALL atomDipolZ(n,m,jatom,j1,j2,iatom,0,0,dipole)
 
-           c1 = CONJG( Zk(iatom,n1) )
-           c2 = Zk(jatom,n2) * CDEXP(ci*(phi2-phi1))
+           c1 = CONJG( Zk1(jatom,n1) )
+           c2 = Zk2(iatom,n2) * CDEXP(ci*phi)
 
            zDipole = zDipole + c1*c2*dipole
 
@@ -407,7 +421,7 @@ SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,nk,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -462,8 +476,8 @@ SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,
         DO n2 = 1, 2
            DO mu2 = 1, nhex
 
-              IF (n1 == n2 .AND. mu1 == mu2) CYCLE
-              CALL RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
+              !IF (n1 == n2 .AND. mu1 == mu2) CYCLE
+              CALL RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
 
               DO ie = 1, ne
                 sigm1Part(n1,mu1,n2,mu2,ie) = reint(ie)
@@ -526,7 +540,7 @@ SUBROUTINE RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
   REAL(8), INTENT(in)    :: fnk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,nk,2,nhex)
 
   REAL(8), INTENT(in)    :: epol(3)
 
@@ -542,10 +556,10 @@ SUBROUTINE RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
   REAL(8), PARAMETER     :: ptol  =  1.D-15
 
-  INTEGER                :: k, ie, ii
+  INTEGER                :: k, k1, k2, ie, ii, i, NDrk
 
 ! for calling some functions
-  REAL(8)                :: dk
+  REAL(8)                :: dk, gammak2, drudeBroadening, percentage
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvgRe, diracAvgIm, Eab, diracDelta, diracDelta_im
 
@@ -554,20 +568,31 @@ SUBROUTINE RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol
  reint = 0.D0
  imagint = 0.D0
 
+ percentage = 5.D0 !%
+ NDrk = int(nk*percentage/100)
+ gammak2 = NDrk*(rka(2)-rka(1))/4
+
 ! sum over k for particular n1, mu1, n2, mu2
-DO k=1,nk
+DO k1 = 1,nk
+    DO k2 = 1,nk
+    IF (ABS(k2 - k1) .le. NDrk) THEN
+        drudeBroadening = 1/(Ndrk*(rka(2)-rka(1)))
+    ELSE
+        drudeBroadening = 0.D0
+    END IF
+!    drudeBroadening = gammak2/((rka(k1)-rka(k2))**2 + gammak2**2) * 1.D0/pi
 !energy difference
-    Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
+    Eab = Enk(n2,mu2,k2) - Enk(n1,mu1,k1)
 ! squared optical dipole matrix element (1/Angstroms**2)
     css = 0.D0
 !cycle for scalar product of polarization vector and dipole matrix element
     DO ii = 1, 3
-        css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
+        css = css + epol(ii)*cDipole(ii,k1,n1,mu1,k2,n2,mu2)
     END DO
 ! square of matrix element
     p2   = CDABS(css)**2
 ! multiply by distribuion function
-    p2df = p2*(fnk(n1,mu1,k) - fnk(n2,mu2,k)) !(1/Angstroms**2)
+    p2df = p2*(fnk(n1,mu1,k1) - fnk(n2,mu2,k2)) !(1/Angstroms**2)
 
 ! if small then skip
     IF ( ABS(Eab) .lt. ptol ) THEN
@@ -577,35 +602,42 @@ DO k=1,nk
     IF (ABS(p2df) <= ptol) CYCLE
 
 ! k-cell boundaries (1/A)
-    IF (k == 1) THEN
+    IF (k1 == 1) THEN
         x1 = rka(1)
-        x2 = (rka(k+1) + rka(k))/2.D0
-    ELSE IF (k == nk) THEN
-        x1 = (rka(k-1) + rka(k))/2.D0
+    ELSE
+        x1 = (rka(k1-1) + rka(k1))/2.D0
+    END IF
+
+    IF (k2 == nk) THEN
         x2 = rka(nk)
     ELSE
-        x1 = (rka(k-1) + rka(k))/2.D0
-        x2 = (rka(k+1) + rka(k))/2.D0
+        x2 = (rka(k2+1) + rka(k2))/2.D0
     END IF
+
         dk = x2-x1
 
 ! band energies at k-cell boundaries (eV)
-    IF (k == 1) THEN
+    IF (k1 == 1) THEN
         enk1n = Enk(n1,mu1,1)
         enk1p = (Enk(n1,mu1,1)+Enk(n1,mu1,2))/2.D0
-        enk2n = Enk(n2,mu2,1)
-        enk2p = (Enk(n2,mu2,1)+Enk(n2,mu2,2))/2.D0
-    ELSE IF (k == nk) THEN
+    ELSE IF (k1 == nk) THEN
         enk1n = (Enk(n1,mu1,nk-1)+Enk(n1,mu1,nk))/2.D0
         enk1p = Enk(n1,mu1,nk)
+    ELSE
+        enk1n = (Enk(n1,mu1,k1-1)+Enk(n1,mu1,k1  ))/2.D0
+        enk1p = (Enk(n1,mu1,k1  )+Enk(n1,mu1,k1+1))/2.D0
+    END IF
+
+     IF (k2 == 1) THEN
+        enk2n = Enk(n2,mu2,1)
+        enk2p = (Enk(n2,mu2,1)+Enk(n2,mu2,2))/2.D0
+     ELSE IF (k2 == nk) THEN
         enk2n = (Enk(n2,mu2,nk-1)+Enk(n2,mu2,nk))/2.D0
         enk2p = Enk(n2,mu2,nk)
-    ELSE
-        enk1n = (Enk(n1,mu1,k-1)+Enk(n1,mu1,k  ))/2.D0
-        enk1p = (Enk(n1,mu1,k  )+Enk(n1,mu1,k+1))/2.D0
-        enk2n = (Enk(n2,mu2,k-1)+Enk(n2,mu2,k  ))/2.D0
-        enk2p = (Enk(n2,mu2,k  )+Enk(n2,mu2,k+1))/2.D0
-    END IF
+     ELSE
+        enk2n = (Enk(n2,mu2,k2-1)+Enk(n2,mu2,k2  ))/2.D0
+        enk2p = (Enk(n2,mu2,k2 )+Enk(n2,mu2,k2+1))/2.D0
+     END IF
 
 ! accumulate function vs photon energy
     DO ie = 1, ne
@@ -617,7 +649,7 @@ DO k=1,nk
         IF(diracAvgRe == 0.) THEN
             reint(ie) = reint(ie) + 0.D0
         ELSE
-            reint(ie) = reint(ie) + dk/2*p2df*diracAvgRe/Eab   ! (1/Angstroms**3 1/eV**2)
+            reint(ie) = reint(ie) + dk/2*p2df*diracAvgRe/Eab * dk *drudeBroadening   ! (1/Angstroms**3 1/eV**2)
         END IF
 
         ! calculate imaginary part of integral
@@ -625,11 +657,11 @@ DO k=1,nk
         IF(diracAvgIm == 0.) THEN
             imagint(ie) = imagint(ie) + 0.D0
         ELSE
-            imagint(ie) = imagint(ie) + dk/(2*pi)*p2df*diracAvgIm/Eab   ! (1/Angstroms**3 1/eV**2)
+            imagint(ie) = imagint(ie) + dk/(2*pi)*p2df*diracAvgIm/Eab * dk *drudeBroadening    ! (1/Angstroms**3 1/eV**2)
         END IF
 
     END DO
-
+  END DO
 END DO
 
 END SUBROUTINE RealImagPartIntegralDr
