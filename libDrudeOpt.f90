@@ -28,9 +28,9 @@
 ! - SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1,sigm2)
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE DielPermittivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fwhm,ne,hw,eps1Part,eps2Part,eps1,eps2)
+SUBROUTINE DielPermittivityDr(n,m,nhex,nk,rka,Enk,Tempr,Efermi,epol,ebg,fwhm,ne,hw,eps1,eps2)
 !===============================================================================
-! Compute the real and imaginary parts of the dielectric function as a function
+! Compute the real and imaginary parts of the DRUDE dielectric function as a function
 ! of probe photon energy
 !-------------------------------------------------------------------------------
 ! Input        :
@@ -50,8 +50,6 @@ SUBROUTINE DielPermittivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,
 ! Output       :
 !  eps1(ne)      real part of dielectric function (none)
 !  eps2(ne)      imaginary part of dielectric function (none)
-!  eps1Part(2,nhex,2,nhex,ne)  real part of dielectric function contribution from particular transition
-!  eps2Part(2,nhex,2,nhex,ne)  imaginary part of dielectric function contribution from particular transition
 !===============================================================================
   IMPLICIT NONE
 
@@ -62,7 +60,6 @@ SUBROUTINE DielPermittivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,nk,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -78,7 +75,6 @@ SUBROUTINE DielPermittivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,
 
 ! output variable
   REAL(8),  INTENT(out)  :: eps1(ne), eps2(ne)
-  REAL(8),  INTENT(out)  :: eps1Part(2,nhex,2,nhex,ne), eps2Part(2,nhex,2,nhex,ne)
 
 ! working variables and parameter
 
@@ -98,7 +94,7 @@ SUBROUTINE DielPermittivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,
   INTEGER                :: n1, mu1, n2, mu2
 
 ! for calling some functions
-  REAL(8)                :: diameter, tubeDiam, area
+  REAL(8)                :: diameter, tubeDiam, area, eps1Part, eps2Part
 
 !background dielectric constant (dimensionless)
 eps0(:) = ebg
@@ -126,28 +122,24 @@ eps0(:) = ebg
 
   DO n1 = 1, 2   ! 1 <-> valence, 2 <-> conduction
      DO mu1 = 1, nhex
-        DO n2 = 1, 2
-           DO mu2 = 1, nhex
+        n2 = n1
+        mu2 = mu1
 
-              !IF (n1 == n2 .AND. mu1 == mu2) CYCLE
-              CALL RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
+        CALL RealImagPartIntegralDr(n,m,n1,mu1,nhex,nk,rka,Enk,fnk,epol,fwhm,ne,hw,reint,imagint)
 ! accumulate dielectric function vs photon energy
-                 DO ie = 1, ne
-                    IF (hw(ie) .le. ptol) THEN
-                        eps1Part(n1,mu1,n2,mu2,ie) = imagint(ie)/1.D-3
-                        eps2Part(n1,mu1,n2,mu2,ie) = reint(ie)/1.D-3
-                    ELSE
-                        eps1Part(n1,mu1,n2,mu2,ie) = imagint(ie)/hw(ie)  ! (1/Angstroms**3 1/eV**3)
-                        eps2Part(n1,mu1,n2,mu2,ie) = reint(ie)/hw(ie)    ! (1/Angstroms**3 1/eV**3)
-                    END IF
+        DO ie = 1, ne
+            IF (hw(ie) .le. ptol) THEN
+                eps1Part = imagint(ie)/1.D-3
+                eps2Part = reint(ie)/1.D-3
+            ELSE
+                eps1Part = imagint(ie)/hw(ie)  ! (1/Angstroms**3 1/eV**3)
+                eps2Part = reint(ie)/hw(ie)    ! (1/Angstroms**3 1/eV**3)
+            END IF
 
-                    ress(ie) = ress(ie) + eps1Part(n1,mu1,n2,mu2,ie)
-                    imss(ie) = imss(ie) + eps2Part(n1,mu1,n2,mu2,ie)
-                 END DO
-
-
-           END DO
+            ress(ie) = ress(ie) + eps1Part
+            imss(ie) = imss(ie) + eps2Part
         END DO
+
      END DO
   END DO
 
@@ -155,80 +147,21 @@ eps0(:) = ebg
   eps1 = eps0 + pre*ress
   eps2 = pre*imss
 
-! contributions to dielectric funtion
-  eps1Part = pre*eps1Part
-  eps2Part = pre*eps2Part
-
 END SUBROUTINE DielPermittivityDr
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE tbDipoleMXDr(n,m,n1,mu1,n2,mu2,rk1,rk2,cDipole)
-!===============================================================================
-! optical dipole matrix element (1/Angstrom) for (n,m) carbon nanotube
-!       D = < n1,mu1,rk | gradient | n2,mu2,rk > (1/Angstroms)
-!-------------------------------------------------------------------------------
-! Input        :
-!  n,m           chiral vector coordinates in (a1,a2)
-!  n1            bra vector electronic state (n=1,2)
-!  mu1           bra vector electronic state manifold (0...NHexagon-1)
-!
-!  n2            ket vector electronic state (n=1,2)
-!  mu2           ket vector electronic state manifold (0...NHexagon-1)
-!
-!  rk1           bra electronic state k (1/A) (-pi/T < k < pi/T)
-!  rk2           ket electronic state k (1/A) (-pi/T < k < pi/T)
-! Output       :
-!  cDipole(3)    complex dipole matrix element (1/Angstroms)
-!===============================================================================
-  IMPLICIT NONE
-
-! input variables
-  INTEGER, INTENT(in)    :: n, m, n1, mu1, n2, mu2
-  REAL(8), INTENT(in)    :: rk1, rk2
-
-! output variable
-  COMPLEX(8),INTENT(out) :: cDipole(3)
-
-! working variables
-  INTEGER                :: mmu1, mmu2
-  REAL(8)                :: rkk
-  COMPLEX(8)             :: xDipole, yDipole, zDipole
-
-  cDipole = 0.D0
-  CALL reducedCutLine(n,m,mu1,mmu1)
-  CALL reducedCutLine(n,m,mu2,mmu2)
-
-  IF (rk1 == rk2) THEN
-    CALL tbDipolXY(n,m,n1,mmu1,n2,mmu2,rk1,xDipole,yDipole) ! ki == kf for perpendicular polarization
-  ELSE
-    xDipole = 0.D0
-    yDipole = 0.D0
-  END IF
-
-  CALL tbDipolZDr(n,m,n1,mmu1,n2,mmu2,rk1,rk2,zDipole)
-
-  cDipole(1) = xDipole
-  cDipole(2) = yDipole
-  cDipole(3) = zDipole
-
-  RETURN
-
-END SUBROUTINE tbDipoleMXDr
-!*******************************************************************************
-!*******************************************************************************
-SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
+SUBROUTINE tbDipolZDr(n,m,n1,mu1,rk1,rk2,zDipole)
 !===============================================================================
 ! this subroutine calls tbDipolZ2
 ! z component of optical dipole matrix element for (n,m) carbon nanotube
-!        Dz = < n1,mu1,rk | d/dz | n2,mu2,rk > (1/Angstroms)
+!        Dz = < n,mu,rk1 | d/dz | n,mu,rk2 > (1/Angstroms)
+! initial and final state differ only by rk, n and mu are conserved
+! these matrix elements are designed to consider Drude conductivity
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
-!  n1            bra vector electronic state (n=1,2)
-!  mu1           bra vector electronic state manifold (0...NHexagon-1)
-!
-!  n2            ket vector electronic state (n=1,2)
-!  mu2           ket vector electronic state manifold (0...NHexagon-1)
+!  n1            1 or 2 correspond to valence or conduction band
+!  mu1           cutting line number
 !
 !  rk1           bra electronic state k (1/A) (-pi/T < k < pi/T)
 !  rk2           ket electronic state k (1/A) (-pi/T < k < pi/T)
@@ -239,7 +172,7 @@ SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
   REAL(8), PARAMETER     :: rktol = .001D0
 
 ! input variables
-  INTEGER, INTENT(in)    :: n, m, n1, mu1, n2, mu2
+  INTEGER, INTENT(in)    :: n, m, n1, mu1
   REAL(8), INTENT(in)    :: rk1,rk2
 
 ! output variable
@@ -249,23 +182,17 @@ SUBROUTINE tbDipolZDr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
   REAL(8)                :: rd, rd1, rd2
   COMPLEX(8)             :: zD1, zD2
 
-! selection rule
-  IF (mu1 /= mu2) THEN
-     zDipole = 0.D0
-     RETURN
-  END IF
-
-  IF (n1 /= n2 .and. rk1 /= rk2) THEN
+  IF (rk1 == rk2) THEN
      zDipole = 0.D0
      RETURN
   END IF
 
 ! calculate z component of dipole vector (1/Angstroms)
-  CALL tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
+  CALL tbDipolZ2Dr(n,m,n1,mu1,n1,mu1,rk1,rk2,zDipole)
 
 ! fix sign convention relative to neighboring points in k space
-  CALL tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1-rktol,rk2-rktol,zD1)
-  CALL tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1+rktol,rk2+rktol,zD2)
+  CALL tbDipolZ2Dr(n,m,n1,mu1,n1,mu1,rk1-rktol,rk2-rktol,zD1)
+  CALL tbDipolZ2Dr(n,m,n1,mu1,n1,mu1,rk1+rktol,rk2+rktol,zD2)
 
   rd  = REAL(zDipole)
   rd1 = REAL(zD1)
@@ -287,9 +214,9 @@ END SUBROUTINE tbDipolZDr
 !*******************************************************************************
 SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
 !===============================================================================
-! this is the kernel of tbDipolZ subroutine
+! this is the kernel of tbDipolZDr subroutine
 ! z component of optical dipole matrix element for (n,m) carbon nanotube
-!        Dz = < n1,mu1,rk | d/dz | n2,mu2,rk > (1/Angstroms)
+!        Dz = < n1,mu1,rk1 | d/dz | n2,mu2,rk2 > (1/Angstroms)
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
@@ -385,12 +312,10 @@ SUBROUTINE tbDipolZ2Dr(n,m,n1,mu1,n2,mu2,rk1,rk2,zDipole)
 END SUBROUTINE tbDipolZ2Dr
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne,hw,sigm1Part,sigm2Part,sigm1,sigm2)
+SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,Tempr,Efermi,epol,fwhm,ne,hw,sigm1,sigm2)
 !===============================================================================
-! Compute the real and imaginary parts of the dynamical conductivity as a function
+! Compute the real and imaginary parts of the DRUDE dynamical conductivity as a function
 ! of probe photon energy
-! expression from Sasaki, Ken-ichi, and Yasuhiro Tokura. "Theory of a Carbon-Nanotube Polarization Switch."
-! Physical Review Applied 9.3 (2018): 034018.
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
@@ -409,8 +334,6 @@ SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,
 ! Output       :
 !  sigm1(ne)      real part of dynamical conductivity (e^2/h)
 !  sigm2(ne)      imaginary part of dynamical conductivity (e^2/h)
-!  sigm1Part(2,nhex,2,nhex,ne) real part of conductivity contribution from particular transition
-!  sigm2Part(2,nhex,2,nhex,ne) imaginary part of conductivity contribution from particular transition
 !===============================================================================
   IMPLICIT NONE
 
@@ -421,7 +344,6 @@ SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,nk,2,nhex)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -435,7 +357,6 @@ SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,
 
 ! output variable
   REAL(8),  INTENT(out)  :: sigm1(ne), sigm2(ne)
-  REAL(8),  INTENT(out)  :: sigm1Part(2,nhex,2,nhex,ne), sigm2Part(2,nhex,2,nhex,ne)
 
 ! working variables and parameter
 
@@ -470,25 +391,20 @@ SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,
 ! calculate Fremi distributions
   CALL FermiDistributionArray(nhex,nk,Enk,Tempr,Efermi,fnk)
 
-! sum over n1, mu1, n2, mu2
+! sum over n1, mu1
   DO n1 = 1, 2         ! 1 <-> valence, 2 <-> conduction
      DO mu1 = 1, nhex
-        DO n2 = 1, 2
-           DO mu2 = 1, nhex
+        n2 = n1
+        mu2 = mu1
 
-              !IF (n1 == n2 .AND. mu1 == mu2) CYCLE
-              CALL RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
+        CALL RealImagPartIntegralDr(n,m,n1,mu1,nhex,nk,rka,Enk,fnk,epol,fwhm,ne,hw,reint,imagint)
 
-              DO ie = 1, ne
-                sigm1Part(n1,mu1,n2,mu2,ie) = reint(ie)
-                sigm2Part(n1,mu1,n2,mu2,ie) = imagint(ie)
-
-                ress(ie) = ress(ie) + sigm1Part(n1,mu1,n2,mu2,ie)
-                imss(ie) = imss(ie) + sigm2Part(n1,mu1,n2,mu2,ie)
-              END DO
-
-           END DO
+        DO ie = 1, ne
+           ress(ie) = ress(ie) + reint(ie)
+           imss(ie) = imss(ie) + imagint(ie)
         END DO
+
+
      END DO
   END DO
 
@@ -496,31 +412,23 @@ SUBROUTINE DynConductivityDr(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,
   sigm1 = pre*ress
   sigm2 = -pre*imss
 
-! conductivity contributions [e^2/h] = (A/s)
-  sigm1Part = pre*sigm1Part
-  sigm2Part = -pre*sigm2Part
-
 END SUBROUTINE DynConductivityDr
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,fwhm,ne,hw,reint,imagint)
+SUBROUTINE RealImagPartIntegralDr(n,m,n1,mu1,nhex,nk,rka,Enk,fnk,epol,fwhm,ne,hw,reint,imagint)
 !===============================================================================
-! Compute the integral over dk for particular n1,mu1 and n2,mu2, which corresponds to
-! the dynamical conductivity as a function of probe photon energy
-! expression from Sasaki, Ken-ichi, and Yasuhiro Tokura. "Theory of a Carbon-Nanotube Polarization Switch."
-! Physical Review Applied 9.3 (2018): 034018.
+! Compute the integral over dk1,dk2 for particular n, mu which corresponds to
+! the Drude dynamical conductivity as a function of probe photon energy
 !-------------------------------------------------------------------------------
 ! Input        :
-!  n1, mu1       initial state
-!  n2, mu2       final state
+!  n,m           chiral indeces
+!  n1            1 or 2 corresponds to valence or conduction band
+!  mu1           cutting line number
 !  nhex          number of hexagons
 !  nk            number of k points
 !  rka           array of k points (1/A)
 !  Enk           array of energies (eV)
 !  fnk           array of fermi distributions (dimensionless)
-!  cDipole       array of complex matrix elements (1/A)
-!  Tempr         lattice temperature (deg K)
-!  Efermi        Fermi level
 !  epol(3)       complex unit electric polarization vector (none)
 !  ebg           background permittivity (dimensionless)
 !  fwhm          fwhm probe linewidth (eV)
@@ -533,14 +441,14 @@ SUBROUTINE RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol
   IMPLICIT NONE
 
 ! input variables
-  INTEGER, INTENT(in)    :: n1, mu1, n2, mu2
+  INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: n1, mu1
   INTEGER, INTENT(in)    :: nhex
   INTEGER, INTENT(in)    :: nk
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
   REAL(8), INTENT(in)    :: fnk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,nk,2,nhex)
 
   REAL(8), INTENT(in)    :: epol(3)
 
@@ -555,44 +463,47 @@ SUBROUTINE RealImagPartIntegralDr(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol
 ! working variables and parameter
   REAL(8), PARAMETER     :: pi    =  3.14159265358979D0
   REAL(8), PARAMETER     :: ptol  =  1.D-15
+  REAL(8), PARAMETER     :: hbarvfermi = 6.582119 !(eV-A) !hbar*vfermi, vfermi = 10**6 m/s
 
-  INTEGER                :: k, k1, k2, ie, ii, i, NDrk
+  INTEGER                :: k1, k2, ie
 
 ! for calling some functions
-  REAL(8)                :: dk, gammak2, drudeBroadening, percentage
+  REAL(8)                :: dk, gammaDr, drudeBroadening, dkDr, rk1, rk2
   REAL(8)                :: p2, p2df, x1, x2, enk1n, enk1p, enk2n, enk2p
   REAL(8)                :: y1, y2, diracAvgRe, diracAvgIm, Eab, diracDelta, diracDelta_im
 
+  COMPLEX(8)             :: zDipole
   COMPLEX(8)             :: css
 
  reint = 0.D0
  imagint = 0.D0
 
- percentage = 5.D0 !%
- NDrk = int(nk*percentage/100)
- gammak2 = NDrk*(rka(2)-rka(1))/4
+ gammaDr = 0.05 ! eV
+ dkDr = gammaDr/hbarvfermi
 
 ! sum over k for particular n1, mu1, n2, mu2
 DO k1 = 1,nk
     DO k2 = 1,nk
-    IF (ABS(k2 - k1) .le. NDrk) THEN
-        drudeBroadening = 1/(Ndrk*(rka(2)-rka(1)))
+! define Drude broadening distribution
+    rk1 = rka(k1)
+    rk2 = rka(k2)
+    IF (ABS(rk1-rk2) < 5*dkDr) THEN
+        !drudeBroadening = 1.D0/dkDr
+        drudeBroadening = dkDr/((rk1 - rk2)**2 + dkDr**2) * 1.D0/pi
     ELSE
-        drudeBroadening = 0.D0
+        CYCLE
     END IF
-!    drudeBroadening = gammak2/((rka(k1)-rka(k2))**2 + gammak2**2) * 1.D0/pi
+    !drudeBroadening = dkDr/((rk1 - rk2)**2 + dkDr**2) * 1.D0/pi
+    !IF (ABS(drudeBroadening) < 1.D-3 ) CYCLE
 !energy difference
-    Eab = Enk(n2,mu2,k2) - Enk(n1,mu1,k1)
+    Eab = Enk(n1,mu1,k2) - Enk(n1,mu1,k1)
 ! squared optical dipole matrix element (1/Angstroms**2)
-    css = 0.D0
-!cycle for scalar product of polarization vector and dipole matrix element
-    DO ii = 1, 3
-        css = css + epol(ii)*cDipole(ii,k1,n1,mu1,k2,n2,mu2)
-    END DO
+    CALL tbDipolZDr(n,m,n1,mu1,rk1,rk2,zDipole)
+    css = epol(3)*zDipole
 ! square of matrix element
     p2   = CDABS(css)**2
 ! multiply by distribuion function
-    p2df = p2*(fnk(n1,mu1,k1) - fnk(n2,mu2,k2)) !(1/Angstroms**2)
+    p2df = p2*(fnk(n1,mu1,k1) - fnk(n1,mu1,k2)) !(1/Angstroms**2)
 
 ! if small then skip
     IF ( ABS(Eab) .lt. ptol ) THEN
@@ -629,14 +540,14 @@ DO k1 = 1,nk
     END IF
 
      IF (k2 == 1) THEN
-        enk2n = Enk(n2,mu2,1)
-        enk2p = (Enk(n2,mu2,1)+Enk(n2,mu2,2))/2.D0
+        enk2n = Enk(n1,mu1,1)
+        enk2p = (Enk(n1,mu1,1)+Enk(n1,mu1,2))/2.D0
      ELSE IF (k2 == nk) THEN
-        enk2n = (Enk(n2,mu2,nk-1)+Enk(n2,mu2,nk))/2.D0
-        enk2p = Enk(n2,mu2,nk)
+        enk2n = (Enk(n1,mu1,nk-1)+Enk(n1,mu1,nk))/2.D0
+        enk2p = Enk(n1,mu1,nk)
      ELSE
-        enk2n = (Enk(n2,mu2,k2-1)+Enk(n2,mu2,k2  ))/2.D0
-        enk2p = (Enk(n2,mu2,k2 )+Enk(n2,mu2,k2+1))/2.D0
+        enk2n = (Enk(n1,mu1,k2-1)+Enk(n1,mu1,k2  ))/2.D0
+        enk2p = (Enk(n1,mu1,k2 )+Enk(n1,mu1,k2+1))/2.D0
      END IF
 
 ! accumulate function vs photon energy
