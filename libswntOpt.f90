@@ -251,6 +251,9 @@ eps0(:) = ebg
   eps1Part = pre*eps1Part
   eps2Part = pre*eps2Part
   
+  DEALLOCATE(ress)
+  DEALLOCATE(imss)
+
 END SUBROUTINE DielPermittivity
 !*******************************************************************************
 !*******************************************************************************
@@ -1008,6 +1011,10 @@ END DO
 eps1out = eps0 + ss1
 eps2out = ss2
 
+
+    DEALLOCATE(ss1)
+    DEALLOCATE(ss2)
+
 END SUBROUTINE DielPermittivityKrKr
 !*******************************************************************************
 !*******************************************************************************
@@ -1161,6 +1168,9 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
   sigm1Part = pre*sigm1Part
   sigm2Part = -pre*sigm2Part
 
+  DEALLOCATE(ress)
+  DEALLOCATE(imss)
+
 END SUBROUTINE DynConductivity
 !*******************************************************************************
 !*******************************************************************************
@@ -1274,6 +1284,9 @@ SUBROUTINE DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
   sigm1 = pre*ress
   sigm2 = -pre*imss
 
+  DEALLOCATE(ress)
+  DEALLOCATE(imss)
+
 END SUBROUTINE DynConductivityInter
 !*******************************************************************************
 !*******************************************************************************
@@ -1384,6 +1397,9 @@ SUBROUTINE DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
 ! imaginary part of dielectric function [e^2/h] = (A/s)
   sigm1 = pre*ress
   sigm2 = -pre*imss
+
+  DEALLOCATE(ress)
+  DEALLOCATE(imss)
 
 END SUBROUTINE DynConductivityIntra
 !*******************************************************************************
@@ -1742,6 +1758,8 @@ DO jj = 1,nhex
      END DO
   END DO
 END DO
+
+  DEALLOCATE(j1j2)
 
   xDipole = xDipole/2.D0*1.D0/nhex
   yDipole = ci*xDipole
