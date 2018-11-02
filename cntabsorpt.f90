@@ -96,6 +96,8 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE    :: sigm2Part(:,:,:,:,:)
   REAL(8), ALLOCATABLE    :: eps1Dr(:), eps2Dr(:)
   REAL(8), ALLOCATABLE    :: sigm1Dr(:), sigm2Dr(:)
+
+  REAL(8)                 :: charge
 !-------------------------------------------------------------------------------
 ! variables for input and output files 
   CHARACTER(40)           :: infile, outfile, path
@@ -301,8 +303,8 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'DOS in tube.elecDOS.'//outfile
 
-  DEALLOCATE(eDOS)
-  DEALLOCATE(eEarray)
+!  DEALLOCATE(eDOS)
+!  DEALLOCATE(eEarray)
 
 !----------------------------------------------------------------------
 !             squared optical matrix elements (eV)
@@ -429,6 +431,7 @@ PROGRAM cntabsorpt
   OPEN(unit=24,file=TRIM(path)//'tube.plasmon_intra.'//'theta'//TRIM(thetastr)//'.'//TRIM(outfile)//'.csv')
   OPEN(unit=25,file=TRIM(path)//'tube.epsZero.'//'theta'//TRIM(thetastr)//'.'//outfile)
   OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//'theta'//TRIM(thetastr)//'.'//TRIM(outfile)//'.csv')
+  OPEN(unit=27,file=TRIM(path)//'tube.chargeDens.'//outfile)
 
   WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ", "Absorpt(w) "
   WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ", "Absorpt(w) "
@@ -441,15 +444,20 @@ PROGRAM cntabsorpt
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
   WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..begin DO loop over Fermi level in range 1.25..1.75 eV'
-  DO i = 1, 2
+  WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
+  DO i = 1, 51
   WRITE (*,*) '--------------------------------------------------------'
 
-  Efermi = 1.25 + (i-1) * 0.5D0
+  Efermi = -2.5 + (i-1) * 0.1D0
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
   CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr)) )
   path = './tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr))//'/'
+  WRITE (*,*) '--------------------------------------------------------'
+
+  CALL ChargeDensity(nhex, nk, nee, Enk, Tempr, Efermi, eEarray, eDOS, charge)
+  WRITE(27,1001) Efermi, charge
+  WRITE (*,*) 'charge density in tube.chargeDens.'//outfile
   WRITE (*,*) '--------------------------------------------------------'
 
 ! ======================================================================
@@ -622,7 +630,7 @@ PROGRAM cntabsorpt
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'absorption in tube.absorpt.'//outfile
-
+  DEALLOCATE(sigm1, sigm2)
 !! =======================================================================
 !! ======================= looking for plasmon ===========================
   WRITE(*,*) '-------------------------------------------------------'
@@ -775,7 +783,7 @@ PROGRAM cntabsorpt
 !  WRITE(*,*) 'different contributions in sigm2 in tube.sigm2Part.'//outfile
 !  ! plot absorptPart(hw) *******************************
 !  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.'//outfile
-
+!
   END DO
 
   WRITE (*,*) '--------------------------------------------------------'
@@ -789,6 +797,7 @@ PROGRAM cntabsorpt
   CLOSE(unit=24)
   CLOSE(unit=25)
   CLOSE(unit=26)
+  CLOSE(unit=27)
 
   WRITE(*,*) 'plasmon information in tube.plasmon_intra.'//TRIM(outfile)//'.csv ', 'and ', &
   'tube.plasmon_inter.'//TRIM(outfile)//'.csv '

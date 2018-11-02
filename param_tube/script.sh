@@ -1,5 +1,5 @@
 #!/bin/bash
-filename="tube.chyralities"
+filename="tube.chiralities"
 while read -r n m
 do
     mv tube.param.* tube.param.$n$m
