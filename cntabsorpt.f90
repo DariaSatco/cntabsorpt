@@ -241,11 +241,30 @@ PROGRAM cntabsorpt
   rkmax=pi/trLength(n,m)
   rkmin=-rkmax
   CALL linArray(nk,rkmin,rkmax,rka)
-  dk=rka(2)-rka(1)            
+  dk=rka(2)-rka(1)
+
+! metallicity
+  IF (MOD(n-m,3) == 0) THEN
+    metal = 1
+  ELSE
+    metal = 0
+  END IF
 
 ! compute the array of cutting line indeces corresponding to certain ii transitions
   ALLOCATE(muii(4,nhex/2+1))
   CALL CutLineii(n,m,nhex,muii)
+  OPEN(unit=22,file=TRIM(path)//'tube.cutline.'//outfile)
+   PRINT*, "Cutting lines numbers matched with ii transitions"
+    IF ( metal == 1 ) THEN
+        DO i = 1, nhex/2+1
+            WRITE(22,*) i-1,i-1, muii(1,i), muii(2,i), muii(3,i), muii(4,i)
+        END DO
+    ELSE
+        DO i = 1, nhex/2+1
+            WRITE(22,*) i,i, muii(1,i), muii(2,i)
+        END DO
+    END IF
+  CLOSE(unit=22)
 
 ! compute energy bands En(k) (eV)
 ! NOTE: cutting lines are always taken from 1 to N
@@ -418,12 +437,6 @@ PROGRAM cntabsorpt
 
 ! unit polarization vectors in complex notation (dimensionless)
   CALL polVector(laser_theta,epol)
-
-  IF (MOD(n-m,3) == 0) THEN
-    metal = 1
-  ELSE
-    metal = 0
-  END IF
 
   WRITE (thetastr, 360) INT(laser_theta/10.)
 
