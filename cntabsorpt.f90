@@ -453,9 +453,9 @@ PROGRAM cntabsorpt
   OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//'theta'//TRIM(thetastr)//'.'//TRIM(outfile)//'.csv')
   OPEN(unit=27,file=TRIM(path)//'tube.chargeDens.'//outfile)
 
-  WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ", "Absorpt(w) "
-  WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "Max_part(w)/Max_part(index) ", "Absorpt(w) "
-  WRITE(25,*) "Efermi ", "plasmon position ", "plasmon frequency "
+  WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "ratio", "Absorpt(w) "
+  WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "ratio", "Absorpt(w) "
+  WRITE(25,*) "Efermi ", "zero"
 
 ! ***********************************************************************
 ! FERMI LEVEL LOOP
@@ -719,7 +719,6 @@ PROGRAM cntabsorpt
              l = l+1
           END IF
       END DO
-      PRINT*, hw_laser(plasmonPosition(1)), hw_laser(plasmonPosition(2))
 
   END IF
 
@@ -795,14 +794,15 @@ PROGRAM cntabsorpt
         END DO
     END DO
   END DO
-  DEALLOCATE(plasmonPosition)
-  DEALLOCATE(eps1Zeros)
 
-!  DEALLOCATE(absorpt,absorptPart)
-!  DEALLOCATE(eps1,eps2)
-!  DEALLOCATE(eps1Part,eps2Part)
-!  DEALLOCATE(sigm1Part,sigm2Part)
-!
+  IF (ALLOCATED(plasmonPosition) .EQV. .TRUE.) DEALLOCATE(plasmonPosition)
+  IF (ALLOCATED(eps1Zeros) .EQV. .TRUE.) DEALLOCATE(eps1Zeros)
+
+  DEALLOCATE(absorpt,absorptPart)
+  DEALLOCATE(eps1,eps2)
+  DEALLOCATE(eps1Part,eps2Part)
+  DEALLOCATE(sigm1Part,sigm2Part)
+
 !  CLOSE(unit=122)
 !  CLOSE(unit=123)
 !  CLOSE(unit=124)
