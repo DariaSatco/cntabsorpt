@@ -463,12 +463,13 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-!  WRITE (*,*) '--------------------------------------------------------'
-!  WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
-!  DO i = 1, 51
-!  WRITE (*,*) '--------------------------------------------------------'
-!
-!  Efermi = -2.5 + (i-1) * 0.1D0
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..begin DO loop over Fermi level in range 1..2 eV'
+  DO i = 1, 5
+  WRITE (*,*) '--------------------------------------------------------'
+
+  !Efermi = -2.5 + (i-1) * 0.1D0
+  Efermi = 1. + (i-1) * 0.25D0
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
   CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr)) )
@@ -669,13 +670,13 @@ PROGRAM cntabsorpt
       END DO
   END DO
 
-!  ! CONTRIBUTIONS output *****************************************************
-  OPEN(unit=122,file=TRIM(path)//'tube.eps1Part.'//outfile)
-  OPEN(unit=123,file=TRIM(path)//'tube.eps2Part.'//outfile)
-  OPEN(unit=124,file=TRIM(path)//'tube.sigm1Part.'//outfile)
-  OPEN(unit=125,file=TRIM(path)//'tube.sigm2Part.'//outfile)
-  OPEN(unit=126,file=TRIM(path)//'tube.absorptPart.'//outfile)
-!  ! **************************************************************************
+  ! CONTRIBUTIONS output *****************************************************
+!  OPEN(unit=122,file=TRIM(path)//'tube.eps1Part.'//outfile)
+!  OPEN(unit=123,file=TRIM(path)//'tube.eps2Part.'//outfile)
+!  OPEN(unit=124,file=TRIM(path)//'tube.sigm1Part.'//outfile)
+!  OPEN(unit=125,file=TRIM(path)//'tube.sigm2Part.'//outfile)
+!  OPEN(unit=126,file=TRIM(path)//'tube.absorptPart.'//outfile)
+  ! **************************************************************************
 
   plasmonExists = 0
   zeroNumber = 0
@@ -766,25 +767,25 @@ PROGRAM cntabsorpt
 ! ------------------------------------------------------------------------
 ! HERE the output STARTS for contributions *******************************
 ! ------------------------------------------------------------------------
-              IF ( zeroExists == 1 ) THEN
-                  DO ie = 1, nhw_laser
-                      WRITE(122,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-                      hw_laser(ie), eps1Part(n1,mu1,n2,mu2,ie)
-                      WRITE(123,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-                      hw_laser(ie), eps2Part(n1,mu1,n2,mu2,ie)
-                      WRITE(124,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-                      hw_laser(ie), sigm1Part(n1,mu1,n2,mu2,ie)/(e2/h)
-                      WRITE(125,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-                      hw_laser(ie), sigm2Part(n1,mu1,n2,mu2,ie)/(e2/h)
-                      WRITE(126,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-                      hw_laser(ie), absorptPart(n1,mu1,n2,mu2,ie)/(e2/h)
-                  ENDDO
-                  WRITE(122,1001) ' '
-                  WRITE(123,1001) ' '
-                  WRITE(124,1001) ' '
-                  WRITE(125,1001) ' '
-                  WRITE(126,1001) ' '
-              END IF
+!              IF ( zeroExists == 1 ) THEN
+!                  DO ie = 1, nhw_laser
+!                      WRITE(122,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!                      hw_laser(ie), eps1Part(n1,mu1,n2,mu2,ie)
+!                      WRITE(123,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!                      hw_laser(ie), eps2Part(n1,mu1,n2,mu2,ie)
+!                      WRITE(124,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!                      hw_laser(ie), sigm1Part(n1,mu1,n2,mu2,ie)/(e2/h)
+!                      WRITE(125,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!                      hw_laser(ie), sigm2Part(n1,mu1,n2,mu2,ie)/(e2/h)
+!                      WRITE(126,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+!                      hw_laser(ie), absorptPart(n1,mu1,n2,mu2,ie)/(e2/h)
+!                  ENDDO
+!                  WRITE(122,1001) ' '
+!                  WRITE(123,1001) ' '
+!                  WRITE(124,1001) ' '
+!                  WRITE(125,1001) ' '
+!                  WRITE(126,1001) ' '
+!              END IF
 
 ! ------------------------------------------------------------------------
 ! HERE the output ENDS for contributions *********************************
@@ -797,16 +798,16 @@ PROGRAM cntabsorpt
   DEALLOCATE(plasmonPosition)
   DEALLOCATE(eps1Zeros)
 
-  DEALLOCATE(absorpt,absorptPart)
-  DEALLOCATE(eps1,eps2)
-  DEALLOCATE(eps1Part,eps2Part)
-  DEALLOCATE(sigm1Part,sigm2Part)
-
-  CLOSE(unit=122)
-  CLOSE(unit=123)
-  CLOSE(unit=124)
-  CLOSE(unit=125)
-  CLOSE(unit=126)
+!  DEALLOCATE(absorpt,absorptPart)
+!  DEALLOCATE(eps1,eps2)
+!  DEALLOCATE(eps1Part,eps2Part)
+!  DEALLOCATE(sigm1Part,sigm2Part)
+!
+!  CLOSE(unit=122)
+!  CLOSE(unit=123)
+!  CLOSE(unit=124)
+!  CLOSE(unit=125)
+!  CLOSE(unit=126)
 
   WRITE(*,*) '..End of LOOP '
 
@@ -823,11 +824,11 @@ PROGRAM cntabsorpt
 !  ! plot absorptPart(hw) *******************************
 !  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.'//outfile
 !
-!  END DO
-!
-!  WRITE (*,*) '--------------------------------------------------------'
-!  WRITE (*,*) '..end of DO loop over Fermi level'
-!  WRITE (*,*) '--------------------------------------------------------'
+  END DO
+
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..end of DO loop over Fermi level'
+  WRITE (*,*) '--------------------------------------------------------'
 
 ! ***********************************************************************
 ! END OF FERMI LEVEL LOOP
