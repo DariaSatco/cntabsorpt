@@ -1,4 +1,7 @@
 /tube*/*
+/plots/
+/gnuplot_scripts/
+/param_tube/
 *.out
 *.eps
 *.o

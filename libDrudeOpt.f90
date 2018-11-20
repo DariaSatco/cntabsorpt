@@ -481,7 +481,7 @@ SUBROUTINE RealImagPartIntegralDr(n,m,n1,mu1,nhex,nk,rka,Enk,fnk,epol,fwhm,ne,hw
  gammaDr = 0.05 ! eV
  dkDr = gammaDr/hbarvfermi
 
-! sum over k for particular n1, mu1, n2, mu2
+! sum over k for particular n1, mu1, n2
 DO k1 = 1,nk
     DO k2 = 1,nk
 ! define Drude broadening distribution
@@ -493,8 +493,6 @@ DO k1 = 1,nk
     ELSE
         CYCLE
     END IF
-    !drudeBroadening = dkDr/((rk1 - rk2)**2 + dkDr**2) * 1.D0/pi
-    !IF (ABS(drudeBroadening) < 1.D-3 ) CYCLE
 !energy difference
     Eab = Enk(n1,mu1,k2) - Enk(n1,mu1,k1)
 ! squared optical dipole matrix element (1/Angstroms**2)

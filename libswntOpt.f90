@@ -154,7 +154,7 @@ SUBROUTINE DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,fw
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,-1:1)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -1089,7 +1089,7 @@ SUBROUTINE DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fwhm,ne
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,-1:1)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -1208,7 +1208,7 @@ SUBROUTINE DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,-1:1)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -1324,7 +1324,7 @@ SUBROUTINE DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,fw
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,-1:1)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -1471,7 +1471,7 @@ difFermiDist,matrElementSq,diracAvgFunc)
 
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,-1:1)
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -1811,7 +1811,7 @@ SUBROUTINE RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,f
   REAL(8), INTENT(in)    :: rka(nk)
   REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
   REAL(8), INTENT(in)    :: fnk(2,nhex,nk)
-  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,nhex)
+  COMPLEX(8), INTENT(in) :: cDipole(3,nk,2,nhex,2,-1:1)
 
   REAL(8), INTENT(in)    :: epol(3)
 
@@ -1840,6 +1840,7 @@ SUBROUTINE RealImagPartIntegral(n1,mu1,n2,mu2,nhex,nk,rka,Enk,fnk,cDipole,epol,f
  imagint = 0.D0
 
 ! sum over k for particular n1, mu1, n2, mu2
+IF (ABS(mu1-mu2) .le. 1) THEN
 DO k=1,nk
 !energy difference
     Eab = Enk(n2,mu2,k) - Enk(n1,mu1,k)
@@ -1847,7 +1848,7 @@ DO k=1,nk
     css = 0.D0
 !cycle for scalar product of polarization vector and dipole matrix element
     DO ii = 1, 3
-        css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2)
+        css = css + epol(ii)*cDipole(ii,k,n1,mu1,n2,mu2-mu1)
     END DO
 ! square of matrix element
     p2   = CDABS(css)**2
@@ -1916,6 +1917,7 @@ DO k=1,nk
     END DO
 
 END DO
+END IF
 
 END SUBROUTINE RealImagPartIntegral
 !*******************************************************************************

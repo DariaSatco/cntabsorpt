@@ -103,6 +103,17 @@ PROGRAM cntabsorpt
   CHARACTER(40)           :: infile, outfile, path
   CHARACTER(5)            :: fermistr, thetastr
 
+! working variales
+  INTEGER                 :: zeroNumber
+  REAL(8), ALLOCATABLE    :: plasmonFreq(:), eps1Zeros(:)
+  INTEGER, ALLOCATABLE    :: plasmonPosition(:)
+  REAL(8)                 :: diameter, area, prediel, precond, tubeDiam, rkii
+  REAL(8)                 :: ratio
+  INTEGER, ALLOCATABLE    :: muii(:,:)
+  INTEGER                 :: place_max, zeroExists, metal, loc_mu1(2), loc_mu2(2), plasmonExists, truePlasmon, ierr
+  INTEGER                 :: i, mn, j, mnj, l, s, k1, k2, b1, b2
+
+!------------------------------------------------------------------------------
 !temp variables
   REAL(8), ALLOCATABLE   :: difFermiDist(:,:,:,:,:)
   REAL(8), ALLOCATABLE   :: matrElementSq(:,:,:,:,:)
@@ -110,12 +121,7 @@ PROGRAM cntabsorpt
   INTEGER                :: max_position(5), min_position(5)
 
   REAL                   :: divergence(9), kCoef(10), maxAbsDif(9)
-  INTEGER                :: i, mn, j, mnj, l, k1, k2
   REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
-  REAL(8)                :: diameter, area, prediel, precond, tubeDiam, rkii
-  INTEGER, ALLOCATABLE   :: muii(:,:)
-  INTEGER                :: place_max, zeroExists, metal, loc_mu1(2), loc_mu2(2), plasmonExists, truePlasmon, ierr
-  REAL(8), ALLOCATABLE   :: plasmonFreq(:)
   REAL(8)                :: rk1, rk2
   COMPLEX(8)             :: test(3)
 
@@ -331,16 +337,17 @@ PROGRAM cntabsorpt
   WRITE (*,*) '====================================================='
   WRITE (*,*) '..Squared optical matrix elements (eV)'
 
-  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
+  ALLOCATE(cDipole(3,nk,2,nhex,2,-1:1))
   DO n1 = 1,2
     DO n2 = 1,2
         DO mu1 = 1, nhex
-            DO mu2 = 1, nhex
+            DO i=-1,1
+                mu2 = mu1 + i ! mu1-1, mu1, mu1+1
 
                 DO k = 1, nk
                 rk = rka(k)
 
-                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
+                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,i)) ! (1/A)
                     !CALL stbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
 
                 END DO
@@ -456,12 +463,12 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-  WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
-  DO i = 1, 51
-  WRITE (*,*) '--------------------------------------------------------'
-
-  Efermi = -2.5 + (i-1) * 0.1D0
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
+!  DO i = 1, 51
+!  WRITE (*,*) '--------------------------------------------------------'
+!
+!  Efermi = -2.5 + (i-1) * 0.1D0
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
   CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr)) )
@@ -647,7 +654,7 @@ PROGRAM cntabsorpt
 !! =======================================================================
 !! ======================= looking for plasmon ===========================
   WRITE(*,*) '-------------------------------------------------------'
-  ALLOCATE(absorptPart(2,nhex,2,nhex,nhw_laser))
+  ALLOCATE(absorptPart(2,nhex/2,2,nhex/2,nhw_laser))
   WRITE(*,*) '..LOOP over all possible transitions'
 
   DO n1 = 1,2
@@ -663,33 +670,67 @@ PROGRAM cntabsorpt
   END DO
 
 !  ! CONTRIBUTIONS output *****************************************************
-!  OPEN(unit=122,file=TRIM(path)//'tube.eps1Part.'//outfile)
-!  OPEN(unit=123,file=TRIM(path)//'tube.eps2Part.'//outfile)
-!  OPEN(unit=124,file=TRIM(path)//'tube.sigm1Part.'//outfile)
-!  OPEN(unit=125,file=TRIM(path)//'tube.sigm2Part.'//outfile)
-!  OPEN(unit=126,file=TRIM(path)//'tube.absorptPart.'//outfile)
+  OPEN(unit=122,file=TRIM(path)//'tube.eps1Part.'//outfile)
+  OPEN(unit=123,file=TRIM(path)//'tube.eps2Part.'//outfile)
+  OPEN(unit=124,file=TRIM(path)//'tube.sigm1Part.'//outfile)
+  OPEN(unit=125,file=TRIM(path)//'tube.sigm2Part.'//outfile)
+  OPEN(unit=126,file=TRIM(path)//'tube.absorptPart.'//outfile)
 !  ! **************************************************************************
 
-  ALLOCATE(plasmonFreq(nhw_laser))
-  plasmonFreq = 0.0
   plasmonExists = 0
+  zeroNumber = 0
 
+! look for zeros in real part of dielectric function
+! plasmon is present if there is zero in dielectric function
   DO ie = 1, nhw_laser-1
       IF ( eps1(ie) * eps1(ie+1) < 0.D0 .and. eps1(ie) < 0.D0 ) THEN
-         plasmonFreq(ie) = hw_laser(ie)
-         WRITE(25,1001) Efermi, ie, hw_laser(ie)
-         plasmonExists = 1
+        zeroNumber = zeroNumber + 1
       END IF
   END DO
 
+  IF (zeroNumber /= 0) THEN
+    ALLOCATE(plasmonPosition(zeroNumber))
+    ALLOCATE(eps1Zeros(zeroNumber))
+
+    plasmonExists = 1
+    plasmonPosition = 0
+    eps1Zeros = 0.0
+
+      l = 1
+      place_max = 0
+      DO ie = 1, nhw_laser-1
+          IF ( eps1(ie) * eps1(ie+1) < 0.D0 .and. eps1(ie) < 0.D0 ) THEN
+             ! save the information about zeros of dielectric function
+             eps1Zeros(l) = (hw_laser(ie)+hw_laser(ie+1))/2
+             WRITE(25,1001) Efermi, eps1Zeros(l)
+
+             ! look for plasmon position in proximity of eps=0
+             b1 = ie
+             b2 = ie
+             DO WHILE ( b1 < nhw_laser-1 )
+                b1 = b1-1
+                b2 = b2+1
+                place_max = b1 + MAXLOC(absorpt(b1:b2),1) - 1
+                IF (place_max /= b1 .and. place_max /= b2) EXIT
+             END DO
+             plasmonPosition(l) = place_max
+
+             l = l+1
+          END IF
+      END DO
+      PRINT*, hw_laser(plasmonPosition(1)), hw_laser(plasmonPosition(2))
+
+  END IF
+
+
+! consider only one K point
   DO n1 = 1,2
     DO n2 = 1,2
         DO mu1 = 1, nhex/2
             DO mu2 = 1, nhex/2
 
-! look for zeros in real part of dielectric function
+! look for zeros in real part of ij contribution to dielectric function to choose important contributions
             zeroExists = 0
-            truePlasmon = 0
             DO ie = 1, nhw_laser-1
                 IF ( eps1Part(n1,mu1,n2,mu2,ie) * eps1Part(n1,mu1,n2,mu2,ie+1) < 0.D0 ) THEN
                     zeroExists = 1
@@ -702,64 +743,48 @@ PROGRAM cntabsorpt
 ! check if zeros are present in both n1,mu1,n2,mu2 contribution to dielectric function
 ! and also in the total dielectric function
             IF ( zeroExists == 1 .and. plasmonExists == 1 ) THEN
-                place_max = MAXLOC(absorptPart(n1,mu1,n2,mu2,:),1)
-                DO ie = 1, nhw_laser
-                ! check if the position of n1,mu1,n2,mu2 maximum corresponds to any maximum of total absorption
-                    IF (plasmonFreq(ie) .ne. 0.D0) THEN
-                        IF ( ABS(place_max - ie) .le. 5 ) THEN
-                            truePlasmon = 1
-                            ! probably it's better to take place_plasmon = ie and leave the value of place_max as maximum
-                            ! of certain contribution
-                            ! then we can filter contributions by condition = 1
-                            place_max = ie
-                        END IF
-                    END IF
-                END DO
-
-                IF ( truePlasmon == 1 ) THEN
-                ! check if contribution is essential
-                    IF (MAXVAL(absorptPart(n1,mu1,n2,mu2,:))/MAXVAL(absorptPart(:,:,:,:,place_max)) > 1.D-1 ) THEN
+            DO l = 1,zeroNumber
+            ratio = 2*absorptPart(n1,mu1,n2,mu2,plasmonPosition(l))/absorpt(plasmonPosition(l))
+            ! check if contribution is essential for plasmon
+               IF ( ratio > 1.D-1 ) THEN
                     ! the output differs for metallic and semiconducting nanotubes:
                     ! for SC we start counting of Ei from 1
                     ! for M we start counting of Ei from 0
                         IF ( n1 == n2 ) THEN
                             WRITE(24,3003) Efermi, mu1, mu2, loc_mu1(2) - metal, &
-                            loc_mu2(2) - metal, hw_laser(place_max), &
-                            MAXVAL(absorptPart(n1,mu1,n2,mu2,:))/MAXVAL(absorptPart(:,:,:,:,place_max)), &
-                            absorpt(place_max)/(e2/h)
+                            loc_mu2(2) - metal, hw_laser(plasmonPosition(l)), &
+                            ratio, absorpt(plasmonPosition(l))/(e2/h)
                         ELSE
                             WRITE(26,3003) Efermi, mu1, mu2, loc_mu1(2) - metal, &
-                            loc_mu2(2) - metal, hw_laser(place_max), &
-                            MAXVAL(absorptPart(n1,mu1,n2,mu2,:))/MAXVAL(absorptPart(:,:,:,:,place_max)), &
-                            absorpt(place_max)/(e2/h)
+                            loc_mu2(2) - metal, hw_laser(plasmonPosition(l)), &
+                            ratio, absorpt(plasmonPosition(l))/(e2/h)
                         END IF
-                    END IF
                 END IF
 
+            END DO
             END IF
-
 ! ------------------------------------------------------------------------
 ! HERE the output STARTS for contributions *******************************
 ! ------------------------------------------------------------------------
-!              IF ( zeroExists == 1 ) THEN
-!                  DO ie = 1, nhw_laser
-!                      WRITE(122,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!                      hw_laser(ie), eps1Part(n1,mu1,n2,mu2,ie)
-!                      WRITE(123,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!                      hw_laser(ie), eps2Part(n1,mu1,n2,mu2,ie)
-!                      WRITE(124,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!                      hw_laser(ie), sigm1Part(n1,mu1,n2,mu2,ie)/(e2/h)
-!                      WRITE(125,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!                      hw_laser(ie), sigm2Part(n1,mu1,n2,mu2,ie)/(e2/h)
-!                      WRITE(126,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
-!                      hw_laser(ie), absorptPart(n1,mu1,n2,mu2,ie)/(e2/h)
-!                  ENDDO
-!                  WRITE(122,1001) ' '
-!                  WRITE(123,1001) ' '
-!                  WRITE(124,1001) ' '
-!                  WRITE(125,1001) ' '
-!                  WRITE(126,1001) ' '
-!              END IF
+              IF ( zeroExists == 1 ) THEN
+                  DO ie = 1, nhw_laser
+                      WRITE(122,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+                      hw_laser(ie), eps1Part(n1,mu1,n2,mu2,ie)
+                      WRITE(123,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+                      hw_laser(ie), eps2Part(n1,mu1,n2,mu2,ie)
+                      WRITE(124,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+                      hw_laser(ie), sigm1Part(n1,mu1,n2,mu2,ie)/(e2/h)
+                      WRITE(125,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+                      hw_laser(ie), sigm2Part(n1,mu1,n2,mu2,ie)/(e2/h)
+                      WRITE(126,1001) n1,n2, mu1,mu2, loc_mu1(2) - metal, loc_mu2(2) - metal,&
+                      hw_laser(ie), absorptPart(n1,mu1,n2,mu2,ie)/(e2/h)
+                  ENDDO
+                  WRITE(122,1001) ' '
+                  WRITE(123,1001) ' '
+                  WRITE(124,1001) ' '
+                  WRITE(125,1001) ' '
+                  WRITE(126,1001) ' '
+              END IF
 
 ! ------------------------------------------------------------------------
 ! HERE the output ENDS for contributions *********************************
@@ -769,18 +794,19 @@ PROGRAM cntabsorpt
         END DO
     END DO
   END DO
-  DEALLOCATE(plasmonFreq)
+  DEALLOCATE(plasmonPosition)
+  DEALLOCATE(eps1Zeros)
 
   DEALLOCATE(absorpt,absorptPart)
   DEALLOCATE(eps1,eps2)
   DEALLOCATE(eps1Part,eps2Part)
   DEALLOCATE(sigm1Part,sigm2Part)
 
-!  CLOSE(unit=122)
-!  CLOSE(unit=123)
-!  CLOSE(unit=124)
-!  CLOSE(unit=125)
-!  CLOSE(unit=126)
+  CLOSE(unit=122)
+  CLOSE(unit=123)
+  CLOSE(unit=124)
+  CLOSE(unit=125)
+  CLOSE(unit=126)
 
   WRITE(*,*) '..End of LOOP '
 
@@ -797,11 +823,11 @@ PROGRAM cntabsorpt
 !  ! plot absorptPart(hw) *******************************
 !  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.'//outfile
 !
-  END DO
-
-  WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..end of DO loop over Fermi level'
-  WRITE (*,*) '--------------------------------------------------------'
+!  END DO
+!
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..end of DO loop over Fermi level'
+!  WRITE (*,*) '--------------------------------------------------------'
 
 ! ***********************************************************************
 ! END OF FERMI LEVEL LOOP
@@ -819,47 +845,6 @@ PROGRAM cntabsorpt
 
 ! ============= part of code to check the calculations ================================
 ! *************** please, remove it later *********************************************
-!
-! WRITE (*,*) '====================================================='
-! WRITE (*,*) '..test under integral function'
-!
-! ALLOCATE(difFermiDisT(2,2,nhex,nhex,nk))
-! ALLOCATE(matrElementSq(2,2,nhex,nhex,nk))
-! ALLOCATE(diracAvgFunc(2,2,nhex,nhex,nk,nhw_laser))
-!
-! CALL Func_test(nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,difFermiDist, &
-! matrElementSq,diracAvgFunc)
-!
-!   max_position = maxloc(diracAvgFunc)
-!   min_position = minloc(diracAvgFunc)
-!
-!   PRINT*, 'maximum at', max_position
-!   PRINT*, 'minimum at', min_position
-!
-!   PRINT*, 'max hw', hw_laser(max_position(4)), 'min hw',  hw_laser(min_position(4))
-
-! OPEN(unit=22,file=TRIM(path)//'tube.test_max.'//outfile)
-! DO k = 1, nk
-!    WRITE(22,1001) rka(k)/rka(nk), &
-!    difFermiDist(max_position(1), max_position(2), max_position(3), k), &
-!    matrElementSq(max_position(1), max_position(2), max_position(3), k), &
-!    diracAvgFunc(max_position(1), max_position(2), max_position(3), k)
-! ENDDO
-! CLOSE(unit=22)
-! WRITE(*,*) 'test max in file tube.test_max.'//outfile
-!
-! OPEN(unit=22,file=TRIM(path)//'tube.test_min.'//outfile)
-! DO k = 1, nk
-!    WRITE(22,1001) rka(k)/rka(nk), &
-!    difFermiDist(min_position(1), min_position(2), min_position(3), k), &
-!    matrElementSq(min_position(1), min_position(2), min_position(3), k), &
-!    diracAvgFunc(min_position(1), min_position(2), min_position(3), k)
-! ENDDO
-! CLOSE(unit=22)
-! WRITE(*,*) 'test min in file tube.test_min.'//outfile
-
-! DEALLOCATE(difFermiDist,matrElementSq,diracAvgFunc)
-
 ! ---------------------------------------------------------
 ! check convergence of the result according to dk chosen
 ! ---------------------------------------------------------
