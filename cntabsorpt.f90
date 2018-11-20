@@ -453,8 +453,8 @@ PROGRAM cntabsorpt
   OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//'theta'//TRIM(thetastr)//'.'//TRIM(outfile)//'.csv')
   OPEN(unit=27,file=TRIM(path)//'tube.chargeDens.'//outfile)
 
-  WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "ratio", "Absorpt(w) "
-  WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "ratio", "Absorpt(w) "
+  WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "ratio ", "Absorpt(w) "
+  WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "ratio ", "Absorpt(w) "
   WRITE(25,*) "Efermi ", "zero"
 
 ! ***********************************************************************
