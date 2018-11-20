@@ -464,12 +464,13 @@ PROGRAM cntabsorpt
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
   WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
-  DO i = 1, 51
+  !WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
+  WRITE (*,*) '..begin DO loop over Fermi level in range 1..2 eV'
+  DO i = 1, 5
   WRITE (*,*) '--------------------------------------------------------'
 
-  Efermi = -2.5 + (i-1) * 0.1D0
-  !Efermi = 1. + (i-1) * 0.25D0
+  !Efermi = -2.5 + (i-1) * 0.1D0
+  Efermi = 1. + (i-1) * 0.25D0
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
   CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr)) )
