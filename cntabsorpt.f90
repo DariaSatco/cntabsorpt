@@ -463,13 +463,13 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-  WRITE (*,*) '--------------------------------------------------------'
-  !WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
   WRITE (*,*) '..begin DO loop over Fermi level in range 1..2 eV'
   DO i = 1, 5
   WRITE (*,*) '--------------------------------------------------------'
 
-  !Efermi = -2.5 + (i-1) * 0.1D0
+!  Efermi = -2.5 + (i-1) * 0.1D0
   Efermi = 1. + (i-1) * 0.25D0
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
@@ -671,13 +671,13 @@ PROGRAM cntabsorpt
       END DO
   END DO
 
-  ! CONTRIBUTIONS output *****************************************************
-!  OPEN(unit=122,file=TRIM(path)//'tube.eps1Part.'//outfile)
-!  OPEN(unit=123,file=TRIM(path)//'tube.eps2Part.'//outfile)
-!  OPEN(unit=124,file=TRIM(path)//'tube.sigm1Part.'//outfile)
-!  OPEN(unit=125,file=TRIM(path)//'tube.sigm2Part.'//outfile)
-!  OPEN(unit=126,file=TRIM(path)//'tube.absorptPart.'//outfile)
-  ! **************************************************************************
+! CONTRIBUTIONS output *****************************************************
+! OPEN(unit=122,file=TRIM(path)//'tube.eps1Part.'//outfile)
+! OPEN(unit=123,file=TRIM(path)//'tube.eps2Part.'//outfile)
+! OPEN(unit=124,file=TRIM(path)//'tube.sigm1Part.'//outfile)
+! OPEN(unit=125,file=TRIM(path)//'tube.sigm2Part.'//outfile)
+! OPEN(unit=126,file=TRIM(path)//'tube.absorptPart.'//outfile)
+! **************************************************************************
 
   plasmonExists = 0
   zeroNumber = 0
@@ -824,7 +824,7 @@ PROGRAM cntabsorpt
 !  WRITE(*,*) 'different contributions in sigm2 in tube.sigm2Part.'//outfile
 !  ! plot absorptPart(hw) *******************************
 !  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.'//outfile
-!
+
   END DO
 
   WRITE (*,*) '--------------------------------------------------------'
