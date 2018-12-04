@@ -1012,15 +1012,12 @@ REAL(8) FUNCTION fermi(E,Ef,rkT)
 END FUNCTION fermi
 !*******************************************************************************
 !*******************************************************************************
-SUBROUTINE ChargeDensity(nhex, nk, ne, Enk, Tempr, Efermi, Earray, DOS, charge)
+SUBROUTINE ChargeDensity(ne, Tempr, Efermi, Earray, DOS, charge)
 !===============================================================================
 ! calculates charge (eFermi > 0) and hole (eFermi < 0) density in CNT
 !-------------------------------------------------------------------------------
 ! Input        :
-!  nhex          number of hexagons
-!  nk            number of k points
 !  ne            number of energies in Earray
-!  Enk           array of energies (eV)
 !  Tempr         lattice temperature (deg K)
 !  Efermi        fermi level (eV)
 !  Earray       vector of energies - x axis (eV)
@@ -1030,8 +1027,7 @@ SUBROUTINE ChargeDensity(nhex, nk, ne, Enk, Tempr, Efermi, Earray, DOS, charge)
 !===============================================================================
 IMPLICIT NONE
 ! input variables
-  INTEGER, INTENT(in)    :: nhex, nk, ne
-  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  INTEGER, INTENT(in)    :: ne
 
   REAL(8), INTENT(in)    :: Tempr
   REAL(8), INTENT(in)    :: Efermi
@@ -1066,5 +1062,58 @@ IMPLICIT NONE
   END DO
 
 END SUBROUTINE ChargeDensity
+!*******************************************************************************
+!*******************************************************************************
+SUBROUTINE QuantumCapacitance(ne, Tempr, Efermi, Earray, DOS, capacitance)
+!===============================================================================
+! calculates quantum capacitance in CNT
+!-------------------------------------------------------------------------------
+! Input        :
+!  ne            number of energies in Earray
+!  Tempr         lattice temperature (deg K)
+!  Efermi        fermi level (eV)
+!  Earray        vector of energies - x axis (eV)
+!  DOS           vector of DOS (states/atom/eV)
+! Output       :
+!  capacitance   quantum capacitance
+!===============================================================================
+IMPLICIT NONE
+! input variables
+  INTEGER, INTENT(in)    :: ne
+
+  REAL(8), INTENT(in)    :: Tempr
+  REAL(8), INTENT(in)    :: Efermi
+
+  REAL(8), INTENT(in)    :: Earray(ne)
+  REAL(8), INTENT(in)    :: DOS(ne)
+
+! output variable
+  REAL(8), INTENT(out)   :: capacitance
+
+! working variables
+  REAL(8)                :: fermiDistDeriv, ch, rkT, dE
+  INTEGER                :: i
+
+  rkT = .025853D0 * (Tempr/300.D0) ! thermal energy
+  dE = abs(Earray(2) - Earray(1))
+  capacitance = 0.D0
+
+  DO i=1,ne
+    IF (Efermi > 0.D0) THEN
+        IF (Earray(i) .ge. 0.D0) THEN
+            ch = exp( (Earray(i) - Efermi)/(2*rkT) ) + exp( - (Earray(i) - Efermi)/(2*rkT) )
+            fermiDistDeriv = 1.D0/rkT * 1/ch**2
+            capacitance = capacitance + dE * DOS(i) * fermiDistDeriv
+        END IF
+    ELSE
+        IF (Earray(i) .le. 0.D0) THEN
+            ch = exp( (Earray(i) - Efermi)/(2*rkT) ) + exp( - (Earray(i) - Efermi)/(2*rkT) )
+            fermiDistDeriv = 1.D0/rkT * 1/ch**2
+            capacitance = capacitance + dE * DOS(i) * fermiDistDeriv
+        END IF
+    END IF
+  END DO
+
+END SUBROUTINE QuantumCapacitance
 !*******************************************************************************
 !*******************************************************************************

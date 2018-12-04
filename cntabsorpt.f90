@@ -12,7 +12,7 @@
 ! Authors      :
 ! - ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
 ! - Daria Satco  (dasha.shatco@gmail.com)
-! Latest Vers. : 2018.09.30
+! Latest Vers. : 2018.12.04
 !-------------------------------------------------------------------------------
 ! Required files :
 ! - globvar         -- global variables
@@ -44,22 +44,21 @@ PROGRAM cntabsorpt
   REAL(8)                :: fermiLevel
 !-------------------------------------------------------------------------------
 ! calculation parameter input
-  INTEGER                :: k, mu, ii, ie, nee, nq, nep
+  INTEGER                :: k, mu, ii, ie, nee
   INTEGER                :: nhw_laser
-  REAL(8)                :: Tempr, rkT, doping, emine, emaxe, eminp, emaxp
+  REAL(8)                :: Tempr, rkT, doping, emine, emaxe
   REAL(8)                :: epmin, epmax
-  REAL(8)                :: laser_theta, laser_fwhm, dummy
+  REAL(8)                :: laser_theta, laser_fwhm
   REAL(8)                :: ebg
   REAL(8)                :: Efermi
 !-------------------------------------------------------------------------------
 ! variables for electronic states
-  REAL(8)                :: rkmin, rkmax, dk, rk, de, eii
+  REAL(8)                :: rkmin, rkmax, dk, rk, de
   INTEGER                :: nk1
   REAL(8), ALLOCATABLE   :: rka(:)           !(nk)
   REAL(8), ALLOCATABLE   :: Enk(:,:,:)       !(2,nhex,nk)
   COMPLEX(8), ALLOCATABLE:: Znk(:,:,:,:)
   REAL(8), DIMENSION(2)  :: En               !(unit eV)
-  REAL(8), ALLOCATABLE   :: Enkt(:,:,:)      !(2,nhex,nk)
   COMPLEX(8)             :: Zk(2,2)
   
   REAL(8), ALLOCATABLE   :: eEarray(:)       !(nee)
@@ -98,6 +97,7 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE    :: sigm1Dr(:), sigm2Dr(:)
 
   REAL(8)                 :: charge
+  REAL(8)                 :: capacitance
 !-------------------------------------------------------------------------------
 ! variables for input and output files 
   CHARACTER(40)           :: infile, outfile, path
@@ -105,25 +105,16 @@ PROGRAM cntabsorpt
 
 ! working variales
   INTEGER                 :: zeroNumber
-  REAL(8), ALLOCATABLE    :: plasmonFreq(:), eps1Zeros(:)
+  REAL(8), ALLOCATABLE    :: eps1Zeros(:)
   INTEGER, ALLOCATABLE    :: plasmonPosition(:)
-  REAL(8)                 :: diameter, area, prediel, precond, tubeDiam, rkii
+  REAL(8)                 :: diameter, tubeDiam
   REAL(8)                 :: ratio
   INTEGER, ALLOCATABLE    :: muii(:,:)
-  INTEGER                 :: place_max, zeroExists, metal, loc_mu1(2), loc_mu2(2), plasmonExists, truePlasmon, ierr
-  INTEGER                 :: i, mn, j, mnj, l, s, k1, k2, b1, b2
+  INTEGER                 :: place_max, zeroExists, metal, loc_mu1(2), loc_mu2(2), plasmonExists
+  INTEGER                 :: i, j, l, s, k1, k2, b1, b2
+  REAL(8)                 :: Efstart, Efend, dEf
+  INTEGER                 :: NEf
 
-!------------------------------------------------------------------------------
-!temp variables
-  REAL(8), ALLOCATABLE   :: difFermiDist(:,:,:,:,:)
-  REAL(8), ALLOCATABLE   :: matrElementSq(:,:,:,:,:)
-  REAL(8), ALLOCATABLE   :: diracAvgFunc(:,:,:,:,:,:)
-  INTEGER                :: max_position(5), min_position(5)
-
-  REAL                   :: divergence(9), kCoef(10), maxAbsDif(9)
-  REAL(8), ALLOCATABLE   :: eps2aii(:,:)        !(nhw_laser)
-  REAL(8)                :: rk1, rk2
-  COMPLEX(8)             :: test(3)
 
 !*************************************************************
 !!!!!!!!!!!!!!!!!!!!!! MAIN PROGRAM !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -452,6 +443,7 @@ PROGRAM cntabsorpt
   OPEN(unit=25,file=TRIM(path)//'tube.epsZero.'//'theta'//TRIM(thetastr)//'.'//outfile)
   OPEN(unit=26,file=TRIM(path)//'tube.plasmon_inter.'//'theta'//TRIM(thetastr)//'.'//TRIM(outfile)//'.csv')
   OPEN(unit=27,file=TRIM(path)//'tube.chargeDens.'//outfile)
+  OPEN(unit=28,file=TRIM(path)//'tube.quantCapac.'//outfile)
 
   WRITE (24,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "ratio ", "Absorpt(w) "
   WRITE (26,*) "Efermi ", "mu1 ", "mu2 ", "Ei ", "Ej ", "frequency ", "ratio ", "Absorpt(w) "
@@ -463,24 +455,39 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-!  WRITE (*,*) '--------------------------------------------------------'
-!  WRITE (*,*) '..begin DO loop over Fermi level in range -2.5..2.5 eV'
-  WRITE (*,*) '..begin DO loop over Fermi level in range 1..2 eV'
-  DO i = 1, 5
+  Efstart = -1.5
+  Efend = 1.5
+  dEf = 0.1
+  NEf = int((Efend - Efstart)/dEf) + 1
+  WRITE (*,*) '--------------------------------------------------------'
+  WRITE (*,*) '..begin DO loop over Fermi level in range ', Efstart, '..', Efend, ' eV'
+  DO i = 1, Nef
   WRITE (*,*) '--------------------------------------------------------'
 
-!  Efermi = -2.5 + (i-1) * 0.1D0
-  Efermi = 1. + (i-1) * 0.25D0
+  Efermi = Efstart + (i-1) * dEf
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
   CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr)) )
   path = './tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr))//'/'
   WRITE (*,*) '--------------------------------------------------------'
 
-  CALL ChargeDensity(nhex, nk, nee, Enk, Tempr, Efermi, eEarray, eDOS, charge)
+! calculate charge density =======================
+  CALL ChargeDensity(nee, Tempr, Efermi, eEarray, eDOS, charge)
   WRITE(27,1001) Efermi, charge
   WRITE (*,*) 'charge density in tube.chargeDens.'//outfile
   WRITE (*,*) '--------------------------------------------------------'
+
+! quantum capacitance ============================
+  CALL QuantumCapacitance(nee, Tempr, Efermi, eEarray, eDOS, capacitance)
+  WRITE(28,1001) Efermi, capacitance
+  WRITE (*,*) 'quantum capacitance in tube.quantCapac.'//outfile
+  WRITE (*,*) '--------------------------------------------------------'
+
+!  END DO
+!
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..end of DO loop over Fermi level'
+!  WRITE (*,*) '--------------------------------------------------------'
 
 ! ======================================================================
 ! ========================== permittivity ==============================
@@ -839,104 +846,12 @@ PROGRAM cntabsorpt
   CLOSE(unit=25)
   CLOSE(unit=26)
   CLOSE(unit=27)
+  CLOSE(unit=28)
 
   WRITE(*,*) 'plasmon information in tube.plasmon_intra.'//TRIM(outfile)//'.csv ', 'and ', &
   'tube.plasmon_inter.'//TRIM(outfile)//'.csv '
   WRITE (*,*) '--------------------------------------------------------'
 
-
-! ============= part of code to check the calculations ================================
-! *************** please, remove it later *********************************************
-! ---------------------------------------------------------
-! check convergence of the result according to dk chosen
-! ---------------------------------------------------------
-!  DEALLOCATE(rka)
-!  DEALLOCATE(Enk)
-!  DEALLOCATE(Znk)
-!  DEALLOCATE(cDipole)
-!
-!  ALLOCATE(eps2aii(10,nhw_laser))
-!
-!  kCoef = (/1., 2., 3., 4., 5., 6., 7., 8., 9., 10./)
-!
-!  DO i=1,10
-!
-!      dk = laser_fwhm/hbarvfermi*1.D0/kCoef(i)
-!      nk = INT(pi/(trLength(n,m)*dk))
-!
-!      PRINT*, 'Coef = ', kCoef(i), 'Number of k points, nk = ', nk
-!
-!  ALLOCATE(rka(nk))
-!  ALLOCATE(Enk(2,nhex,nk))
-!  ALLOCATE(Znk(2,2,nhex,nk))
-!  ALLOCATE(cDipole(3,nk,2,nhex,2,nhex))
-!
-!! define k point array (1/A): -pi/T .. pi/T
-!  rkmax=pi/trLength(n,m)
-!  rkmin=-rkmax
-!  CALL linArray(nk,rkmin,rkmax,rka)
-!  dk=rka(2)-rka(1)
-!
-!! compute energy bands En(k) (eV)
-!  DO mu=1,nhex
-!     DO k=1,nk
-!        rk=rka(k)
-!        CALL etbTubeBand(n,m,mu,rk,En,Zk)
-!        DO ii=1,2
-!           Enk(ii,mu,k)=En(ii)
-!           Znk(ii,1:2,mu,k)=Zk(ii,1:2)
-!        END DO
-!     END DO
-!  END DO
-!
-!  DO n1 = 1,2
-!    DO n2 = 1,2
-!        DO mu1 = 1, nhex
-!            DO mu2 = 1, nhex
-!
-!                DO k = 1, nk
-!                rk = rka(k)
-!
-!                    CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
-!
-!                END DO
-!
-!            END DO
-!         END DO
-!     END DO
-!  END DO
-!
-!  CALL imagDielEn(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,eps2)
-!
-!  eps2aii(i,1:nhw_laser) = eps2(1:nhw_laser)
-!
-!  DEALLOCATE(rka)
-!  DEALLOCATE(Enk)
-!  DEALLOCATE(Znk)
-!  DEALLOCATE(cDipole)
-!
-!  END DO
-!
-!  DO i=1,9
-!    divergence(i) = 0.0
-!    DO ie = 1, nhw_laser
-!        divergence(i) = divergence(i) + (eps2aii(i,ie) - eps2aii(10,ie))**2
-!    END DO
-!    divergence(i) = SQRT(divergence(i))/nhw_laser
-!    maxAbsDif(i) = MAXVAL(ABS(eps2aii(i,1:nhw_laser) - eps2aii(10,1:nhw_laser)))
-!  END DO
-!
-!  OPEN(unit=22,file='tube.divergence.'//outfile)
-!  DO i=1,9
-!     WRITE(22,1001) kCoef(i), divergence(i), maxAbsDif(i)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'divergence in file tube.divergence.'//outfile
-!
-!  DEALLOCATE(eps2aii)
-
-! ============= part of code to check the calculations ================================
-! ************************************* END *******************************************
 
 ! WRITE(*,*) '====================================================='
 ! WRITE(*,*) 'Fermi level: ', 'from input', Efermi, 'from doping', fermiLevel(n,m,Tempr,doping)

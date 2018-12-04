@@ -616,7 +616,7 @@ IMPLICIT NONE
 !working variables
   INTEGER                :: muk11, muk22, mukp11, mukp22
   INTEGER                :: even, odd
-  INTEGER                :: mu11, mu22, musize
+  INTEGER                :: mu11, mu22
   INTEGER                :: i, dk, dk1, dk2, mpos
   INTEGER                :: metal, cond, denom
 
