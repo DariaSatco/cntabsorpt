@@ -457,7 +457,7 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
   Efstart = -1.5
   Efend = 1.5
-  dEf = 0.1
+  dEf = 0.02
   NEf = int((Efend - Efstart)/dEf) + 1
   WRITE (*,*) '--------------------------------------------------------'
   WRITE (*,*) '..begin DO loop over Fermi level in range ', Efstart, '..', Efend, ' eV'

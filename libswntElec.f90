@@ -1099,19 +1099,9 @@ IMPLICIT NONE
   capacitance = 0.D0
 
   DO i=1,ne
-    IF (Efermi > 0.D0) THEN
-        IF (Earray(i) .ge. 0.D0) THEN
-            ch = exp( (Earray(i) - Efermi)/(2*rkT) ) + exp( - (Earray(i) - Efermi)/(2*rkT) )
-            fermiDistDeriv = 1.D0/rkT * 1/ch**2
-            capacitance = capacitance + dE * DOS(i) * fermiDistDeriv
-        END IF
-    ELSE
-        IF (Earray(i) .le. 0.D0) THEN
-            ch = exp( (Earray(i) - Efermi)/(2*rkT) ) + exp( - (Earray(i) - Efermi)/(2*rkT) )
-            fermiDistDeriv = 1.D0/rkT * 1/ch**2
-            capacitance = capacitance + dE * DOS(i) * fermiDistDeriv
-        END IF
-    END IF
+     ch = exp( (Earray(i) - Efermi)/(2*rkT) ) + exp( - (Earray(i) - Efermi)/(2*rkT) )
+     fermiDistDeriv = 1.D0/rkT * 1/ch**2
+     capacitance = capacitance + dE * DOS(i) * fermiDistDeriv
   END DO
 
 END SUBROUTINE QuantumCapacitance
