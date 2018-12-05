@@ -17,4 +17,6 @@ doping level and also be an alternative way to characterize nanotube chirality.
 If you use this code for your research, please, cite this:
 https://arxiv.org/abs/1811.11451
 
+For any further questions do not hesitate to contact me: daria.satco@skoltech.ru
+
 ![](fitting_e_d.png)
