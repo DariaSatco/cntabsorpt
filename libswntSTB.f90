@@ -15,7 +15,7 @@
 ! [2] Carbon Nanotube Photophysics, G. G. Samsonidze MIT Ph.D. Thesis (2006)
 !-------------------------------------------------------------------------------
 ! Contents     :
-! - SUBROUTINE tbTubeBand(n,m,mu,rk,Ek,Zk)
+! - SUBROUTINE stbTubeBand(n,m,mu,rk,Ek,Zk)
 ! - SUBROUTINE piHamTB(n,m,rk,mu,H,S)
 ! - SUBROUTINE stbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole)
 ! - SUBROUTINE stbDipolZ(n,m,n1,mu1,n2,mu2,rk,zDipole)

@@ -21,11 +21,13 @@
 ! - libMath.f90     -- mathematical libraries
 ! - libswntElec.f90 -- electronic/excitonic states
 ! - libswntOpt.f90  -- optical matrix element, dielectric function, conductivity
+! - libswntSTB.f90  -- simple tight-binding for energy bands and dipole matrix
+! - libDrudeOpt.f90 -- Drude conductivity
 !*******************************************************************************
 !*******************************************************************************
 PROGRAM cntabsorpt
 !===============================================================================
-  USE globvar
+!  USE globvar
   IMPLICIT NONE
   
 ! parameters
@@ -45,8 +47,11 @@ PROGRAM cntabsorpt
 !-------------------------------------------------------------------------------
 ! calculation parameter input
   INTEGER                :: k, mu, ii, ie, nee
+  INTEGER                :: nhex
+  INTEGER                :: nk
   INTEGER                :: nhw_laser
   REAL(8)                :: Tempr, rkT, doping, emine, emaxe
+  REAL(8)                :: refrac
   REAL(8)                :: epmin, epmax
   REAL(8)                :: laser_theta, laser_fwhm
   REAL(8)                :: ebg
@@ -851,10 +856,6 @@ PROGRAM cntabsorpt
   WRITE(*,*) 'plasmon information in tube.plasmon_intra.'//TRIM(outfile)//'.csv ', 'and ', &
   'tube.plasmon_inter.'//TRIM(outfile)//'.csv '
   WRITE (*,*) '--------------------------------------------------------'
-
-
-! WRITE(*,*) '====================================================='
-! WRITE(*,*) 'Fermi level: ', 'from input', Efermi, 'from doping', fermiLevel(n,m,Tempr,doping)
 
   DEALLOCATE(cDipole)
   DEALLOCATE(Enk,rka)

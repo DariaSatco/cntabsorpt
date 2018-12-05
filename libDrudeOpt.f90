@@ -8,7 +8,7 @@
 ! Authors      :
 ! - ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
 ! - Daria Satco  (dasha.shatco@gmail.com)
-! Latest Vers. : 2018.09.30
+! Latest Vers. : 2018.11.30
 !-------------------------------------------------------------------------------
 ! Reference(s) :
 ! [1] Physical Properties of Carbon Nanotubes

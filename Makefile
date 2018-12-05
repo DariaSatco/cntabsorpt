@@ -8,8 +8,7 @@ FLINKER = -framework Accelerate
 # Linux
 # FLINKER = -L/usr/local/lib -llapack -lblas
 
-# Main compilation
-all: clean elopph
+all: clean cntabsorpt
 
 # .f90: free-form Fortran 95/90 source files
 %.o: %.f90
@@ -18,12 +17,12 @@ all: clean elopph
 %.o: %.f
 	$(FC) -c $(F90FLAGS) $< -o $@
 
-MODS = globvar.mod
-OBJS = globvar.o libMath.o swntpar.o swntstruct.o
+OBJS = libMath.o swntpar.o swntstruct.o 
 TUBE = libswntElec.o libswntOpt.o libDrudeOpt.o libswntSTB.o
 
-elopph: $(OBJS) $(MODS) $(TUBE)
-	$(FC) $(OBJS) $(MODS) $(TUBE) \
+# Main compilation
+cntabsorpt: $(OBJS) $(TUBE)
+	$(FC) $(OBJS) $(TUBE) \
 	$(F90FLAGS) cntabsorpt.f90 -o cntabsorpt.out $(FLINKER)
 
 clean:

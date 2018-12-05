@@ -3,11 +3,12 @@
 ! Project      : libswntElec.f90
 !===============================================================================
 ! Purpose      :
-! Calculate electronic states for a SWNT using extended tight-binding model
+! Calculate electronic states for a SWNT using extended tight-binding model (up to 3rd NN)
 !-------------------------------------------------------------------------------
 ! Authors      : ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
-!                Gary Sanders (sanders@phys.ufl.edu) 
-! Latest Vers. : 2013.01.09
+!                Gary Sanders (sanders@phys.ufl.edu)
+!                Daria Satco  (dasha.shatco@gmail.com)
+! Latest Vers. : 2018.11.30
 !-------------------------------------------------------------------------------
 ! Reference(s) :
 ! [1] Physical Properties of Carbon Nanotubes
@@ -23,6 +24,8 @@
 ! - SUBROUTINE piHamOvlp(n,m,rk,mu,H,S)
 ! - SUBROUTINE tbAtomHamOvlp(n,m,iatom,ivec,nn,ham,ovlp)
 ! - SUBROUTINE etbPiTB3(n,m,rk,nout,Ek)
+! - SUBROUTINE ChargeDensity(ne, Tempr, Efermi, Earray, DOS, charge)
+! - SUBROUTINE QuantumCapacitance(ne, Tempr, Efermi, Earray, DOS, capacitance)
 ! - FUNCTION HppPi(r)
 ! - FUNCTION OppPi(r)
 ! - FUNCTION fermiLevel(n,m,Tempr,density)
