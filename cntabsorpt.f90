@@ -27,7 +27,6 @@
 !*******************************************************************************
 PROGRAM cntabsorpt
 !===============================================================================
-!  USE globvar
   IMPLICIT NONE
   
 ! parameters
@@ -460,9 +459,9 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-  Efstart = -1.5
-  Efend = 1.5
-  dEf = 0.02
+  Efstart = 0.
+  Efend = 2.
+  dEf = 0.1
   NEf = int((Efend - Efstart)/dEf) + 1
   WRITE (*,*) '--------------------------------------------------------'
   WRITE (*,*) '..begin DO loop over Fermi level in range ', Efstart, '..', Efend, ' eV'
