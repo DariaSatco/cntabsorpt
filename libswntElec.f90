@@ -1110,3 +1110,238 @@ IMPLICIT NONE
 END SUBROUTINE QuantumCapacitance
 !*******************************************************************************
 !*******************************************************************************
+SUBROUTINE tubeJDOS(n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV, JDOSintraC )
+!===============================================================================
+! Joint density of states per carbon atom for an (n,m) carbon
+! nanotube (states/carbon atom/eV)
+!-------------------------------------------------------------------------------
+! Input        :
+!  n,m           chiral vector coordinates in (a1,a2)
+!  ne            number of energies
+!  Earray(ne)    array of energies (eV)
+! Output       :
+!  JDOSinter(ne)       joint density of states (states/atom/eV)
+!  JDOSintra(ne)       joint density of states (states/atom/eV)
+!=======================================================================
+  IMPLICIT NONE
+
+! parameters
+  REAL(8), PARAMETER     :: pi = 3.14159265358979D0
+
+! input variables
+  INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  REAL(8), INTENT(in)    :: rka(nk)
+  INTEGER, INTENT(in)    :: ne
+  REAL(8), INTENT(in)    :: Earray(ne)
+
+! output variable
+  REAL(8), INTENT(out)   :: JDOSinter(ne), JDOSintraC(ne), JDOSintraV(ne)
+
+! working variables
+  REAL(8), ALLOCATABLE   :: EnkInter(:,:)  !(nk,nhex)
+  REAL(8), ALLOCATABLE   :: EnkIntraC(:,:) !(nk,2*(nhex-1))
+  REAL(8), ALLOCATABLE   :: EnkIntraV(:,:) !(nk,2*(nhex-1))
+
+  INTEGER                :: noutInter, noutIntra
+  INTEGER                :: mu1, mu2, k, indexx1, indexx2, i, ie, nn, ii
+
+  REAL(8)                :: T, trLength
+  REAL(8)                :: rk, rkmin, rkmax, dk, fwhm, fwhm1, E, DSn
+
+
+! allocate storage
+  noutInter = nhex
+  noutIntra = 2*(nhex-1)
+  ALLOCATE(EnkInter(nk,noutInter))
+  ALLOCATE(EnkIntraC(nk,noutIntra))
+  ALLOCATE(EnkIntraV(nk,noutIntra))
+
+  EnkInter = 0.D0
+  EnkIntraC = 0.D0
+  EnkIntraV = 0.D0
+
+! electron energy bands at evenly space k points (eV)
+  DO k = 1, nk
+    indexx1 = 1
+    indexx2 = 1
+    DO mu1 = 1, nhex
+        DO i = -1, 1
+            mu2 = mu1 + i
+
+            IF ( (mu2 < 1) .OR. (mu2 > nhex) ) CYCLE
+
+            ! interband
+            IF ( mu1 == mu2 ) THEN
+                EnkInter(k,indexx1) = Enk(2,mu2,k) - Enk(1,mu1,k)
+                indexx1 = indexx1 + 1
+            ELSE
+            ! intraband
+                EnkIntraV(k,indexx2) = Enk(2,mu2,k) - Enk(2,mu1,k) ! valence
+                EnkIntraC(k,indexx2) = Enk(1,mu2,k) - Enk(1,mu1,k) ! conduction
+                indexx2 = indexx2 + 1
+            END IF
+
+        END DO
+    END DO
+  END DO
+
+! find FWHM linewidth based on energy array (eV)
+  fwhm = ABS(Earray(2) - Earray(1))
+  DO ie = 1, ne-1
+     fwhm1 = ABS(Earray(ie) - Earray(ie+1))
+     IF(fwhm1 < fwhm) fwhm = fwhm1
+  END DO
+
+! accumulate density of states per unit length
+  DO ie = 1, ne
+     JDOSinter(ie) = 0.D0
+     JDOSintraC(ie) = 0.D0
+     JDOSintraV(ie) = 0.D0
+     DO nn = 1, noutInter
+        E = Earray(ie)
+        CALL dos1Dgauss(noutInter,nk,rka,nk,EnkInter,E,fwhm,nn,DSn)
+        JDOSinter(ie) = JDOSinter(ie) + DSn
+     END DO
+     DO nn = 1, noutIntra
+        E = Earray(ie)
+        CALL dos1Dgauss(noutIntra,nk,rka,nk,EnkIntraC,E,fwhm,nn,DSn)
+        JDOSintraC(ie) = JDOSintraC(ie) + DSn
+     END DO
+     DO nn = 1, noutIntra
+        E = Earray(ie)
+        CALL dos1Dgauss(noutIntra,nk,rka,nk,EnkIntraV,E,fwhm,nn,DSn)
+        JDOSintraV(ie) = JDOSintraV(ie) + DSn
+     END DO
+  END DO
+
+! convert to density of states/Carbon_atom/eV
+  T = trLength(n,m)
+  DO ie = 1, ne
+     JDOSinter(ie) = (T/DBLE(noutInter)) * JDOSinter(ie)
+     JDOSintraC(ie) = (T/DBLE(noutIntra)) * JDOSintraC(ie)
+     JDOSintraV(ie) = (T/DBLE(noutIntra)) * JDOSintraV(ie)
+  END DO
+
+  DEALLOCATE(EnkInter, EnkIntraC, EnkIntraV)
+
+END SUBROUTINE tubeJDOS
+!*******************************************************************************
+!*******************************************************************************
+SUBROUTINE tubeJDOSij(mu1,mu2,n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV, JDOSintraC )
+!===============================================================================
+! Joint density of states per carbon atom for an (n,m) carbon
+! nanotube (states/carbon atom/eV)
+!-------------------------------------------------------------------------------
+! Input        :
+!  n,m           chiral vector coordinates in (a1,a2)
+!  ne            number of energies
+!  Earray(ne)    array of energies (eV)
+! Output       :
+!  JDOSinter(ne)       joint density of states (states/atom/eV)
+!  JDOSintra(ne)       joint density of states (states/atom/eV)
+!=======================================================================
+  IMPLICIT NONE
+
+! parameters
+  REAL(8), PARAMETER     :: pi = 3.14159265358979D0
+
+! input variables
+  INTEGER, INTENT(in)    :: mu1, mu2
+  INTEGER, INTENT(in)    :: n, m
+  INTEGER, INTENT(in)    :: nhex
+  INTEGER, INTENT(in)    :: nk
+  REAL(8), INTENT(in)    :: Enk(2,nhex,nk)
+  REAL(8), INTENT(in)    :: rka(nk)
+  INTEGER, INTENT(in)    :: ne
+  REAL(8), INTENT(in)    :: Earray(ne)
+
+! output variable
+  REAL(8), INTENT(out)   :: JDOSinter(ne), JDOSintraC(ne), JDOSintraV(ne)
+
+! working variables
+  REAL(8), ALLOCATABLE   :: EnkInter(:,:)  !(nk,nhex)
+  REAL(8), ALLOCATABLE   :: EnkIntraC(:,:) !(nk,2*(nhex-1))
+  REAL(8), ALLOCATABLE   :: EnkIntraV(:,:) !(nk,2*(nhex-1))
+
+  INTEGER                :: noutInter, noutIntra
+  INTEGER                :: k, indexx1, indexx2, i, ie, nn, ii
+
+  REAL(8)                :: T, trLength
+  REAL(8)                :: rk, rkmin, rkmax, dk, fwhm, fwhm1, E, DSn
+
+
+! allocate storage
+  noutInter = 1
+  noutIntra = 2
+  ALLOCATE(EnkInter(nk,noutInter))
+  ALLOCATE(EnkIntraC(nk,noutIntra))
+  ALLOCATE(EnkIntraV(nk,noutIntra))
+
+  EnkInter = 0.D0
+  EnkIntraC = 0.D0
+  EnkIntraV = 0.D0
+
+! find FWHM linewidth based on energy array (eV)
+  fwhm = ABS(Earray(2) - Earray(1))
+  DO ie = 1, ne-1
+     fwhm1 = ABS(Earray(ie) - Earray(ie+1))
+     IF(fwhm1 < fwhm) fwhm = fwhm1
+  END DO
+
+! energy bands at evenly space k points (eV)
+  DO k = 1, nk
+    indexx1 = 1
+    indexx2 = 1
+    ! interband
+    IF ( mu1 == mu2 ) THEN
+        EnkInter(k,indexx1) = Enk(2,mu2,k) - Enk(1,mu1,k)
+        indexx1 = indexx1 + 1
+    ELSE
+    ! intraband
+        EnkIntraV(k,indexx2) = Enk(2,mu2,k) - Enk(2,mu1,k) ! valence
+        EnkIntraC(k,indexx2) = Enk(1,mu2,k) - Enk(1,mu1,k) ! conduction
+        indexx2 = indexx2 + 1
+    END IF
+  END DO
+
+! accumulate density of states per unit length
+  DO ie = 1, ne
+     JDOSinter(ie) = 0.D0
+     JDOSintraC(ie) = 0.D0
+     JDOSintraV(ie) = 0.D0
+     IF ( mu1 == mu2 ) THEN
+         DO nn = 1, noutInter
+            E = Earray(ie)
+            CALL dos1Dgauss(noutInter,nk,rka,nk,EnkInter,E,fwhm,nn,DSn)
+            JDOSinter(ie) = JDOSinter(ie) + DSn
+         END DO
+     END IF
+     DO nn = 1, noutIntra
+        E = Earray(ie)
+        CALL dos1Dgauss(noutIntra,nk,rka,nk,EnkIntraC,E,fwhm,nn,DSn)
+        JDOSintraC(ie) = JDOSintraC(ie) + DSn
+     END DO
+     DO nn = 1, noutIntra
+        E = Earray(ie)
+        CALL dos1Dgauss(noutIntra,nk,rka,nk,EnkIntraV,E,fwhm,nn,DSn)
+        JDOSintraV(ie) = JDOSintraV(ie) + DSn
+     END DO
+  END DO
+
+! convert to density of states/Carbon_atom/eV
+  T = trLength(n,m)
+  DO ie = 1, ne
+     JDOSinter(ie) = (T/DBLE(noutInter)) * JDOSinter(ie)
+     JDOSintraC(ie) = (T/DBLE(noutIntra)) * JDOSintraC(ie)
+     JDOSintraV(ie) = (T/DBLE(noutIntra)) * JDOSintraV(ie)
+  END DO
+
+  DEALLOCATE(EnkInter, EnkIntraC, EnkIntraV)
+
+END SUBROUTINE tubeJDOSij
+!*******************************************************************************
+!*******************************************************************************
+

@@ -67,6 +67,7 @@ PROGRAM cntabsorpt
   
   REAL(8), ALLOCATABLE   :: eEarray(:)       !(nee)
   REAL(8), ALLOCATABLE   :: eDOS(:)          !(nee)
+  REAL(8), ALLOCATABLE   :: JDOSinter(:), JDOSintraC(:), JDOSintraV(:)      !(nee)
 !-------------------------------------------------------------------------------
 ! variables for optical properties
   INTEGER                 :: mmu
@@ -323,6 +324,36 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'DOS in tube.elecDOS.'//outfile
 
+!----------------------------------------------------------------------
+!            joint density of states (states/atom/eV)
+!----------------------------------------------------------------------
+  ALLOCATE(JDOSinter(nee))
+  ALLOCATE(JDOSintraC(nee))
+  ALLOCATE(JDOSintraV(nee))
+
+  CALL tubeJDOS(n,m,nhex,nk,Enk,rka,nee,eEarray,JDOSinter,JDOSintraV, JDOSintraC)
+
+  OPEN(unit=22,file=TRIM(path)//'tube.JDOS.'//outfile)
+  DO ie = 1, nee
+     WRITE(22,1001) eEarray(ie), JDOSinter(ie), JDOSintraV(ie), JDOSintraC(ie)
+  END DO
+  CLOSE(unit=22)
+  WRITE(*,*) 'JDOS in tube.JDOS.'//outfile
+
+  ! *****************
+  CALL tubeJDOSij(11,12,n,m,nhex,nk,Enk,rka,nee,eEarray,JDOSinter,JDOSintraV, JDOSintraC)
+
+  OPEN(unit=22,file=TRIM(path)//'tube.JDOSij.'//outfile)
+  DO ie = 1, nee
+     WRITE(22,1001) eEarray(ie), JDOSinter(ie), JDOSintraV(ie), JDOSintraC(ie)
+  END DO
+  CLOSE(unit=22)
+  WRITE(*,*) 'JDOS in tube.JDOSij.'//outfile
+
+  DEALLOCATE(JDOSinter)
+  DEALLOCATE(JDOSintraC)
+  DEALLOCATE(JDOSintraV)
+
 !  DEALLOCATE(eDOS)
 !  DEALLOCATE(eEarray)
 
@@ -333,17 +364,18 @@ PROGRAM cntabsorpt
   WRITE (*,*) '..Squared optical matrix elements (eV)'
 
   ALLOCATE(cDipole(3,nk,2,nhex,2,-1:1))
+  cDipole = 0.D0
   DO n1 = 1,2
     DO n2 = 1,2
         DO mu1 = 1, nhex
             DO i=-1,1
                 mu2 = mu1 + i ! mu1-1, mu1, mu1+1
+                IF(mu2 < 1 .OR. mu2 > nhex) CYCLE
 
                 DO k = 1, nk
                 rk = rka(k)
 
                     CALL tbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,i)) ! (1/A)
-                    !CALL stbDipoleMX(n,m,n1,mu1,n2,mu2,rk,cDipole(1:3,k,n1,mu1,n2,mu2)) ! (1/A)
 
                 END DO
 
@@ -459,16 +491,16 @@ PROGRAM cntabsorpt
 ! ---------------------------------------------------------------------
 ! cycle over fermi level position
 ! ---------------------------------------------------------------------
-  Efstart = 0.
-  Efend = 2.
-  dEf = 0.1
-  NEf = int((Efend - Efstart)/dEf) + 1
-  WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..begin DO loop over Fermi level in range ', Efstart, '..', Efend, ' eV'
-  DO i = 1, Nef
-  WRITE (*,*) '--------------------------------------------------------'
-
-  Efermi = Efstart + (i-1) * dEf
+!  Efstart = 0.
+!  Efend = 2.
+!  dEf = 0.1
+!  NEf = int((Efend - Efstart)/dEf) + 1
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..begin DO loop over Fermi level in range ', Efstart, '..', Efend, ' eV'
+!  DO i = 1, Nef
+!  WRITE (*,*) '--------------------------------------------------------'
+!
+!  Efermi = Efstart + (i-1) * dEf
   WRITE (*,*) '..Fermi level: ', Efermi
   WRITE (fermistr, 350) Efermi
   CALL EXECUTE_COMMAND_LINE( 'mkdir -p tube'//TRIM(outfile)//'/pol_'//TRIM(thetastr)//'_fl_'//TRIM(ADJUSTL(fermistr)) )
@@ -836,11 +868,11 @@ PROGRAM cntabsorpt
 !  ! plot absorptPart(hw) *******************************
 !  WRITE(*,*) 'different contributions in absorption in tube.absorptPart.'//outfile
 
-  END DO
-
-  WRITE (*,*) '--------------------------------------------------------'
-  WRITE (*,*) '..end of DO loop over Fermi level'
-  WRITE (*,*) '--------------------------------------------------------'
+!  END DO
+!
+!  WRITE (*,*) '--------------------------------------------------------'
+!  WRITE (*,*) '..end of DO loop over Fermi level'
+!  WRITE (*,*) '--------------------------------------------------------'
 
 ! ***********************************************************************
 ! END OF FERMI LEVEL LOOP
