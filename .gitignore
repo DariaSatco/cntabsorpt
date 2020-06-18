@@ -13,6 +13,7 @@ tube*
 *.gp
 *.png
 *.txt
+!code_snippets.txt
 *.csv
 *.pdf
 *.log

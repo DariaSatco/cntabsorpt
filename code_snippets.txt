@@ -1,0 +1,186 @@
+!  INTEGER                 :: mmu
+!  REAL(8), ALLOCATABLE    :: Px2k(:,:), Pz2k(:,:)  !(nk,nhex)
+
+!  REAL(8), ALLOCATABLE    :: eps1kk(:), eps2kk(:)       !(nhw_laser)
+!  REAL(8), ALLOCATABLE    :: alpha(:)        !(nhw_laser)
+!  REAL(8), ALLOCATABLE    :: sigm1_intra(:)  !(nhw_laser)
+!  REAL(8), ALLOCATABLE    :: sigm1_inter(:)  !(nhw_laser)
+!  REAL(8), ALLOCATABLE    :: sigm2_intra(:)  !(nhw_laser)
+!  REAL(8), ALLOCATABLE    :: sigm2_inter(:)  !(nhw_laser)
+!  REAL(8), ALLOCATABLE    :: eps1Dr(:), eps2Dr(:)
+!  REAL(8), ALLOCATABLE    :: sigm1Dr(:), sigm2Dr(:)
+
+!  REAL(8)                 :: diameter, tubeDiam
+!  INTEGER                 :: j, s, k1, k2,
+!  REAL(8)                 :: Efstart, Efend, dEf
+!  INTEGER                 :: NEf
+
+
+
+
+
+! Write output for matrix elements square: x and z components
+! ------------------------------------------------------------
+! x polarization
+! IF(INT(laser_theta) .NE. 0) THEN
+!    WRITE(*,*) '..x polarization'
+!
+!    ALLOCATE(Px2k(nk,nhex))
+!
+! downward cutting line transitions from mu --> mu-1
+!    DO mu = 1, nhex
+!       DO k = 1, nk
+!          mmu = mu-1
+!          IF (mmu.LT.1) mmu = nhex
+!          Px2k(k,mu) = 3.81D0 * CDABS(cDipole(1,k,1,mu,2,mmu))**2
+!          ! 3.81 = (hbar^2 / (2 m_e)) (eV-A**2)
+!       END DO
+!    END DO
+!
+!    OPEN(unit=22,file=TRIM(path)//'tube.Px2k_dn.'//outfile)
+!    DO k = 1, nk
+!       WRITE(22,1001) rka(k)/rka(nk),(Px2k(k,mu),mu=1,nhex)
+!    END DO
+!    CLOSE(unit=22)
+!    WRITE(*,*) 'Px2_dn(k) in tube.Px2k_dn.'//outfile
+!
+! upward cutting line transitions from mu --> mu+1
+!    DO mu = 1, nhex
+!       DO k = 1, nk
+!          mmu = mu+1
+!          IF (mmu > nhex) mmu=1
+!          Px2k(k,mu) = 3.81D0 * CDABS(cDipole(1,k,1,mu,2,mmu))**2
+!       END DO
+!    END DO
+!
+!    OPEN(unit=22,file=TRIM(path)//'tube.Px2k_up.'//outfile)
+!    DO k = 1, nk
+!       WRITE(22,1001) rka(k)/rka(nk),(Px2k(k,mu),mu=1,nhex)
+!    END DO
+!    CLOSE(unit=22)
+!    WRITE(*,*) 'Px2_up(k) in tube.Px2k_up.'//outfile
+!
+!    DEALLOCATE(Px2k)
+!
+! END IF
+!
+! z polarization
+! WRITE(*,*) '..z polarization'
+! ALLOCATE(Pz2k(nk,nhex))
+!
+! cutting line transitions from mu --> mu
+! DO mu = 1, nhex
+!    DO k = 1, nk
+!       Pz2k(k,mu) = 3.81D0 * CDABS(cDipole(3,k,1,mu,2,mu))**2
+!    END DO
+! END DO
+!
+! OPEN(unit=22,file=TRIM(path)//'tube.Pz2k.'//outfile)
+! DO k = 1, nk
+!    WRITE(22,1001) rka(k)/rka(nk),(Pz2k(k,mu),mu=1,nhex)
+! END DO
+! CLOSE(unit=22)
+! WRITE(*,*) 'Pz2(k) in tube.Pz2k.'//outfile
+!
+! DEALLOCATE(Pz2k)
+
+! DRUDE dielectric permittivity part =======================================
+!  ALLOCATE(eps1Dr(nhw_laser))
+!  ALLOCATE(eps2Dr(nhw_laser))
+!  CALL DielPermittivityDr(n,m,nhex,nk,rka,Enk,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1Dr,eps2Dr)
+!  DEALLOCATE(eps1Dr)
+!  DEALLOCATE(eps2Dr)
+
+! DRUDE conductivity part ==================================================
+!  ALLOCATE(sigm1Dr(nhw_laser))
+!  ALLOCATE(sigm2Dr(nhw_laser))
+!  CALL DynConductivityDr(n,m,nhex,nk,rka,Enk,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1Dr,sigm2Dr)
+
+! =========== KRAMERS-KRONIG ===============================================
+!  ALLOCATE(eps1kk(nhw_laser))
+!  ALLOCATE(eps2kk(nhw_laser))
+!  CALL DielPermittivityKrKr(nhw_laser,ebg,hw_laser,eps1,eps2,eps1kk,eps2kk)   !Kramers-Kronig
+! plot eps1(hw) (Kramers-Kronig) ****************
+! OPEN(unit=22,file=TRIM(path)//'tube.eps1kk.'//outfile)
+! DO ie = 1, nhw_laser
+!    WRITE(22,1001) hw_laser(ie),eps1kk(ie)
+! ENDDO
+! CLOSE(unit=22)
+! WRITE(*,*) 'Kramers-Kronig real part of dielectric function in tube.eps1kk.'//outfile
+!
+! plot eps2(hw) (Kramers-Kronig) ***************
+! OPEN(unit=22,file=TRIM(path)//'tube.eps2kk.'//outfile)
+! DO ie = 1, nhw_laser
+!    WRITE(22,1001) hw_laser(ie),eps2kk(ie)
+! ENDDO
+! CLOSE(unit=22)
+! WRITE(*,*) 'Kramers-Kronig imaginary part of dielectric function in tube.eps2kk.'//outfile
+!  DEALLOCATE(eps1kk)
+!  DEALLOCATE(eps2kk)
+
+!! =======================================================================
+!! ======================= absorption coefficient ========================
+!! alpha
+!! =======================================================================
+!  WRITE (*,*) '--------------------------------------------------------'
+!   ALLOCATE(alpha(nhw_laser))
+!  CALL imagDielAlpha(nhw_laser,hw_laser,eps2,refrac,alpha)
+!
+!! plot absorption alpha(hw) ********************
+!  OPEN(unit=22,file=TRIM(path)//'tube.alpha.'//outfile)
+!  DO ie = 1,nhw_laser
+!     WRITE(22,1001) hw_laser(ie),alpha(ie)
+!  ENDDO
+!  CLOSE(unit=22)
+!  WRITE(*,*) 'alpha(hw) in tube.alpha.'//outfile
+!   DEALLOCATE(alpha)
+
+============= Intra- and interband contributions to conductivity ===============
+! imaginary part of intraband conductivity
+! =======================================================================
+! WRITE (*,*) '--------------------------------------------------------'
+!  ALLOCATE(sigm1_intra(nhw_laser))
+!  ALLOCATE(sigm2_intra(nhw_laser))
+!  ALLOCATE(sigm1_inter(nhw_laser))
+!  ALLOCATE(sigm2_inter(nhw_laser))
+! CALL DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1_intra,sigm2_intra)
+!
+! plot sigm2_intra(hw) *******************************
+! OPEN(unit=22,file=TRIM(path)//'tube.sigm2_intra.'//outfile)
+! DO ie = 1, nhw_laser
+!    WRITE(22,1001) hw_laser(ie), sigm2_intra(ie)/(e2/h)
+! ENDDO
+! CLOSE(unit=22)
+! WRITE(*,*) 'imaginary part of intraband conductivity in tube.sigm2_intra.'//outfile
+!
+! imaginary part of interband conductivity
+! =======================================================================
+! CALL DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1_inter,sigm2_inter)
+!
+! plot sigm2_inter(hw) *******************************
+! OPEN(unit=22,file=TRIM(path)//'tube.sigm2_inter.'//outfile)
+! DO ie = 1, nhw_laser
+!    WRITE(22,1001) hw_laser(ie), sigm2_inter(ie)/(e2/h)
+! ENDDO
+! CLOSE(unit=22)
+! WRITE(*,*) 'imaginary part of interband conductivity in tube.sigm2_inter.'//outfile
+!  DEALLOCATE(sigm1_intra)
+!  DEALLOCATE(sigm2_intra)
+!  DEALLOCATE(sigm1_inter)
+!  DEALLOCATE(sigm2_inter)
+
+! TEST cycle to find chyralities ==========================================
+! OPEN(unit=22,file='tube.chyralities')
+!DO m = 0,30
+!   DO n = m,30
+!
+!    IF ( n == 0 ) CYCLE
+!    diameter = tubeDiam(n,m)/10 !nm
+!    IF ( diameter .ge. 0.5D0 .and. diameter .le. 2.D0 ) THEN
+!       WRITE(22,*) n,m
+!    END IF
+!
+!   END DO
+!END DO
+!CLOSE(unit=22)
+!WRITE(*,*) 'tube chyralities in tube.chyralities '
