@@ -12,7 +12,7 @@
 ! Authors      :
 ! - ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
 ! - Daria Satco  (dasha.shatco@gmail.com)
-! Latest Vers. : 2018.12.04
+! Latest Vers. : 2020.06.18
 !-------------------------------------------------------------------------------
 ! Required files :
 ! - globvar         -- global variables
@@ -70,27 +70,17 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE   :: JDOSinter(:), JDOSintraC(:), JDOSintraV(:)      !(nee)
 !-------------------------------------------------------------------------------
 ! variables for optical properties
-  INTEGER                 :: mmu
   INTEGER                 :: n1, mu1, n2, mu2
   REAL(8)                 :: dep
-  REAL(8), ALLOCATABLE    :: Px2k(:,:)       !(nk,nhex)
-  REAL(8), ALLOCATABLE    :: Pz2k(:,:)       !(nk,nhex)
- 
   REAL(8)                 :: epol(3)
 
   REAL(8), ALLOCATABLE    :: hw_laser(:)     !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps2(:)        !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eps2kk(:)       !(nhw_laser)
   REAL(8), ALLOCATABLE    :: eps1(:)        !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eps1kk(:)       !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: eelspec(:)      !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: alpha(:)        !(nhw_laser)
   REAL(8), ALLOCATABLE    :: sigm1(:)        !(nhw_laser)
   REAL(8), ALLOCATABLE    :: sigm2(:)        !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: sigm1_intra(:)  !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: sigm1_inter(:)  !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: sigm2_intra(:)  !(nhw_laser)
-  REAL(8), ALLOCATABLE    :: sigm2_inter(:)  !(nhw_laser)
+  REAL(8), ALLOCATABLE    :: eelspec(:)      !(nhw_laser)
+
   REAL(8), ALLOCATABLE    :: absorpt(:)      !(nhw_laser)
   COMPLEX(8), ALLOCATABLE :: cDipole(:,:,:,:,:,:) !(3,nk,2,nhex,2,nhex)
   REAL(8), ALLOCATABLE    :: absorptPart(:,:,:,:,:)
@@ -98,8 +88,6 @@ PROGRAM cntabsorpt
   REAL(8), ALLOCATABLE    :: eps2Part(:,:,:,:,:)
   REAL(8), ALLOCATABLE    :: sigm1Part(:,:,:,:,:)
   REAL(8), ALLOCATABLE    :: sigm2Part(:,:,:,:,:)
-  REAL(8), ALLOCATABLE    :: eps1Dr(:), eps2Dr(:)
-  REAL(8), ALLOCATABLE    :: sigm1Dr(:), sigm2Dr(:)
 
   REAL(8)                 :: charge
   REAL(8)                 :: capacitance
@@ -112,13 +100,10 @@ PROGRAM cntabsorpt
   INTEGER                 :: zeroNumber
   REAL(8), ALLOCATABLE    :: eps1Zeros(:)
   INTEGER, ALLOCATABLE    :: plasmonPosition(:)
-  REAL(8)                 :: diameter, tubeDiam
   REAL(8)                 :: ratio
   INTEGER, ALLOCATABLE    :: muii(:,:)
   INTEGER                 :: place_max, zeroExists, metal, loc_mu1(2), loc_mu2(2), plasmonExists
-  INTEGER                 :: i, j, l, s, k1, k2, b1, b2
-  REAL(8)                 :: Efstart, Efend, dEf
-  INTEGER                 :: NEf
+  INTEGER                 :: i, l, b1, b2
 
 
 !*************************************************************
@@ -340,20 +325,6 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'JDOS in tube.JDOS.'//outfile
 
-  ! *****************
-  CALL tubeJDOSij(11,12,n,m,nhex,nk,Enk,rka,nee,eEarray,JDOSinter,JDOSintraV, JDOSintraC)
-
-  OPEN(unit=22,file=TRIM(path)//'tube.JDOSij.'//outfile)
-  DO ie = 1, nee
-     WRITE(22,1001) eEarray(ie), JDOSinter(ie), JDOSintraV(ie), JDOSintraC(ie)
-  END DO
-  CLOSE(unit=22)
-  WRITE(*,*) 'JDOS in tube.JDOSij.'//outfile
-
-  DEALLOCATE(JDOSinter)
-  DEALLOCATE(JDOSintraC)
-  DEALLOCATE(JDOSintraV)
-
 !  DEALLOCATE(eDOS)
 !  DEALLOCATE(eEarray)
 
@@ -383,71 +354,6 @@ PROGRAM cntabsorpt
          END DO
      END DO
   END DO
-
-! Write output for matrix elements square: x and z components
-! ------------------------------------------------------------
-! x polarization      
-! IF(INT(laser_theta) .NE. 0) THEN
-!    WRITE(*,*) '..x polarization'
-!
-!    ALLOCATE(Px2k(nk,nhex))
-!
-! downward cutting line transitions from mu --> mu-1      
-!    DO mu = 1, nhex
-!       DO k = 1, nk
-!          mmu = mu-1
-!          IF (mmu.LT.1) mmu = nhex
-!          Px2k(k,mu) = 3.81D0 * CDABS(cDipole(1,k,1,mu,2,mmu))**2
-!          ! 3.81 = (hbar^2 / (2 m_e)) (eV-A**2)
-!       END DO
-!    END DO
-!
-!    OPEN(unit=22,file=TRIM(path)//'tube.Px2k_dn.'//outfile)
-!    DO k = 1, nk
-!       WRITE(22,1001) rka(k)/rka(nk),(Px2k(k,mu),mu=1,nhex)
-!    END DO
-!    CLOSE(unit=22)
-!    WRITE(*,*) 'Px2_dn(k) in tube.Px2k_dn.'//outfile
-!
-! upward cutting line transitions from mu --> mu+1
-!    DO mu = 1, nhex
-!       DO k = 1, nk
-!          mmu = mu+1
-!          IF (mmu > nhex) mmu=1
-!          Px2k(k,mu) = 3.81D0 * CDABS(cDipole(1,k,1,mu,2,mmu))**2
-!       END DO
-!    END DO
-!
-!    OPEN(unit=22,file=TRIM(path)//'tube.Px2k_up.'//outfile)
-!    DO k = 1, nk
-!       WRITE(22,1001) rka(k)/rka(nk),(Px2k(k,mu),mu=1,nhex)
-!    END DO
-!    CLOSE(unit=22)
-!    WRITE(*,*) 'Px2_up(k) in tube.Px2k_up.'//outfile
-!
-!    DEALLOCATE(Px2k)
-!
-! END IF
-!
-! z polarization
-! WRITE(*,*) '..z polarization'
-! ALLOCATE(Pz2k(nk,nhex))
-!
-! cutting line transitions from mu --> mu 
-! DO mu = 1, nhex
-!    DO k = 1, nk
-!       Pz2k(k,mu) = 3.81D0 * CDABS(cDipole(3,k,1,mu,2,mu))**2
-!    END DO
-! END DO
-!
-! OPEN(unit=22,file=TRIM(path)//'tube.Pz2k.'//outfile)
-! DO k = 1, nk
-!    WRITE(22,1001) rka(k)/rka(nk),(Pz2k(k,mu),mu=1,nhex)
-! END DO
-! CLOSE(unit=22)
-! WRITE(*,*) 'Pz2(k) in tube.Pz2k.'//outfile
-!
-! DEALLOCATE(Pz2k)
             
 !----------------------------------------------------------------------
 !          real and imaginary part of dielectric function (dimensionless)
@@ -537,10 +443,7 @@ PROGRAM cntabsorpt
   ALLOCATE(eps2Part(2,nhex,2,nhex,nhw_laser))
   CALL DielPermittivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,&
   eps1Part,eps2Part,eps1,eps2)
-! DRUDE part ==================
-!  ALLOCATE(eps1Dr(nhw_laser))
-!  ALLOCATE(eps2Dr(nhw_laser))
-!  CALL DielPermittivityDr(n,m,nhex,nk,rka,Enk,Tempr,Efermi,epol,ebg,laser_fwhm,nhw_laser,hw_laser,eps1Dr,eps2Dr)
+
 
 ! plot eps1(hw) *********************************
   OPEN(unit=22,file=TRIM(path)//'tube.eps1.'//outfile)
@@ -557,46 +460,6 @@ PROGRAM cntabsorpt
   ENDDO
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of dielectric function in tube.eps2.'//outfile
-!  DEALLOCATE(eps1Dr)
-!  DEALLOCATE(eps2Dr)
-
-! =========== KRAMERS-KRONIG =====================
-!  ALLOCATE(eps1kk(nhw_laser))
-!  ALLOCATE(eps2kk(nhw_laser))
-!  CALL DielPermittivityKrKr(nhw_laser,ebg,hw_laser,eps1,eps2,eps1kk,eps2kk)   !Kramers-Kronig
-! plot eps1(hw) (Kramers-Kronig) ****************
-! OPEN(unit=22,file=TRIM(path)//'tube.eps1kk.'//outfile)
-! DO ie = 1, nhw_laser
-!    WRITE(22,1001) hw_laser(ie),eps1kk(ie)
-! ENDDO
-! CLOSE(unit=22)
-! WRITE(*,*) 'Kramers-Kronig real part of dielectric function in tube.eps1kk.'//outfile
-!
-! plot eps2(hw) (Kramers-Kronig) ***************
-! OPEN(unit=22,file=TRIM(path)//'tube.eps2kk.'//outfile)
-! DO ie = 1, nhw_laser
-!    WRITE(22,1001) hw_laser(ie),eps2kk(ie)
-! ENDDO
-! CLOSE(unit=22)
-! WRITE(*,*) 'Kramers-Kronig imaginary part of dielectric function in tube.eps2kk.'//outfile
-!  DEALLOCATE(eps1kk)
-!  DEALLOCATE(eps2kk)
-!! =======================================================================
-!! ======================= absorption coefficient ========================
-!! alpha
-!! =======================================================================
-!  WRITE (*,*) '--------------------------------------------------------'
-!   ALLOCATE(alpha(nhw_laser))
-!  CALL imagDielAlpha(nhw_laser,hw_laser,eps2,refrac,alpha)
-!
-!! plot absorption alpha(hw) ********************
-!  OPEN(unit=22,file=TRIM(path)//'tube.alpha.'//outfile)
-!  DO ie = 1,nhw_laser
-!     WRITE(22,1001) hw_laser(ie),alpha(ie)
-!  ENDDO
-!  CLOSE(unit=22)
-!  WRITE(*,*) 'alpha(hw) in tube.alpha.'//outfile
-!   DEALLOCATE(alpha)
 
 ! =======================================================================
 ! ======================= Electron energy loss spectra  =================
@@ -614,6 +477,7 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'eels in tube.eels.'//outfile
   DEALLOCATE(eelspec)
+
 ! =======================================================================
 ! ========================== conductivity ===============================
 ! real and imaginary parts part
@@ -626,10 +490,7 @@ PROGRAM cntabsorpt
   ALLOCATE(sigm2Part(2,nhex,2,nhex,nhw_laser))
   CALL DynConductivity(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,&
   sigm1Part,sigm2Part,sigm1,sigm2)
-! DRUDE part =================
-!  ALLOCATE(sigm1Dr(nhw_laser))
-!  ALLOCATE(sigm2Dr(nhw_laser))
-!  CALL DynConductivityDr(n,m,nhex,nk,rka,Enk,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1Dr,sigm2Dr)
+
 
 ! plot sigm1(hw) ******************************
   OPEN(unit=22,file=TRIM(path)//'tube.sigm1.'//outfile)
@@ -647,39 +508,6 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'imaginary part of conductivity in tube.sigm2.'//outfile
 
-! ============= Intra- and interband contributions to conductivity ===============
-! imaginary part of intraband conductivity
-! =======================================================================
-! WRITE (*,*) '--------------------------------------------------------'
-!  ALLOCATE(sigm1_intra(nhw_laser))
-!  ALLOCATE(sigm2_intra(nhw_laser))
-!  ALLOCATE(sigm1_inter(nhw_laser))
-!  ALLOCATE(sigm2_inter(nhw_laser))
-! CALL DynConductivityIntra(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1_intra,sigm2_intra)
-!
-! plot sigm2_intra(hw) *******************************
-! OPEN(unit=22,file=TRIM(path)//'tube.sigm2_intra.'//outfile)
-! DO ie = 1, nhw_laser
-!    WRITE(22,1001) hw_laser(ie), sigm2_intra(ie)/(e2/h)
-! ENDDO
-! CLOSE(unit=22)
-! WRITE(*,*) 'imaginary part of intraband conductivity in tube.sigm2_intra.'//outfile
-!
-! imaginary part of interband conductivity
-! =======================================================================
-! CALL DynConductivityInter(n,m,nhex,nk,rka,Enk,cDipole,Tempr,Efermi,epol,laser_fwhm,nhw_laser,hw_laser,sigm1_inter,sigm2_inter)
-!
-! plot sigm2_inter(hw) *******************************
-! OPEN(unit=22,file=TRIM(path)//'tube.sigm2_inter.'//outfile)
-! DO ie = 1, nhw_laser
-!    WRITE(22,1001) hw_laser(ie), sigm2_inter(ie)/(e2/h)
-! ENDDO
-! CLOSE(unit=22)
-! WRITE(*,*) 'imaginary part of interband conductivity in tube.sigm2_inter.'//outfile
-!  DEALLOCATE(sigm1_intra)
-!  DEALLOCATE(sigm2_intra)
-!  DEALLOCATE(sigm1_inter)
-!  DEALLOCATE(sigm2_inter)
 
 ! =======================================================================
 ! ============================ absorption ===============================
@@ -696,8 +524,10 @@ PROGRAM cntabsorpt
   CLOSE(unit=22)
   WRITE(*,*) 'absorption in tube.absorpt.'//outfile
   DEALLOCATE(sigm1, sigm2)
-!! =======================================================================
-!! ======================= looking for plasmon ===========================
+
+
+! =======================================================================
+! ======================= looking for plasmon ===========================
   WRITE(*,*) '-------------------------------------------------------'
   ALLOCATE(absorptPart(2,nhex/2,2,nhex/2,nhw_laser))
   WRITE(*,*) '..LOOP over all possible transitions'
@@ -714,13 +544,13 @@ PROGRAM cntabsorpt
       END DO
   END DO
 
-! CONTRIBUTIONS output *****************************************************
+! CONTRIBUTIONS output - uncomment if you want to save different ij plasmonic contributions ******
 ! OPEN(unit=122,file=TRIM(path)//'tube.eps1Part.'//outfile)
 ! OPEN(unit=123,file=TRIM(path)//'tube.eps2Part.'//outfile)
 ! OPEN(unit=124,file=TRIM(path)//'tube.sigm1Part.'//outfile)
 ! OPEN(unit=125,file=TRIM(path)//'tube.sigm2Part.'//outfile)
 ! OPEN(unit=126,file=TRIM(path)//'tube.absorptPart.'//outfile)
-! **************************************************************************
+! *************************************************************************************************
 
   plasmonExists = 0
   zeroNumber = 0
@@ -894,25 +724,9 @@ PROGRAM cntabsorpt
 
   WRITE(*,*) 'Program successfully completed'
 
-! TEST cycle to find chyralities **********************************
-! OPEN(unit=22,file='tube.chyralities')
-!DO m = 0,30
-!   DO n = m,30
-!
-!    IF ( n == 0 ) CYCLE
-!    diameter = tubeDiam(n,m)/10 !nm
-!    IF ( diameter .ge. 0.5D0 .and. diameter .le. 2.D0 ) THEN
-!       WRITE(22,*) n,m
-!    END IF
-!
-!   END DO
-!END DO
-!CLOSE(unit=22)
-!WRITE(*,*) 'tube chyralities in tube.chyralities '
 
 
 ! ****************************************************************
-
 !----------------------------------------------------------------------
 !                          format statements
 !----------------------------------------------------------------------
@@ -920,7 +734,7 @@ PROGRAM cntabsorpt
       STOP
 
 1001  FORMAT(901(1X,G13.5))
-1002  FORMAT(4F8.4)
+!1002  FORMAT(4F8.4)
 2002  FORMAT(1A20)
 350   FORMAT(F4.1)
 360   FORMAT(I1)

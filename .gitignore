@@ -8,6 +8,7 @@
 *.o
 *.mod
 tube*
+!tube.param.105
 *~
 *.gp
 *.png

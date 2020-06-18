@@ -8,7 +8,7 @@
 ! Authors      : ART Nugraha  (nugraha@flex.phys.tohoku.ac.jp)
 !                Gary Sanders (sanders@phys.ufl.edu)
 !                Daria Satco  (dasha.shatco@gmail.com)
-! Latest Vers. : 2018.11.30
+! Latest Vers. : 2020.06.18
 !-------------------------------------------------------------------------------
 ! Reference(s) :
 ! [1] Physical Properties of Carbon Nanotubes
@@ -26,6 +26,8 @@
 ! - SUBROUTINE etbPiTB3(n,m,rk,nout,Ek)
 ! - SUBROUTINE ChargeDensity(ne, Tempr, Efermi, Earray, DOS, charge)
 ! - SUBROUTINE QuantumCapacitance(ne, Tempr, Efermi, Earray, DOS, capacitance)
+! - SUBROUTINE tubeJDOS(n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV, JDOSintraC )
+! - SUBROUTINE tubeJDOSij(mu1,mu2,n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV, JDOSintraC )
 ! - FUNCTION HppPi(r)
 ! - FUNCTION OppPi(r)
 ! - FUNCTION fermiLevel(n,m,Tempr,density)
@@ -1117,11 +1119,16 @@ SUBROUTINE tubeJDOS(n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV, JDOSintr
 !-------------------------------------------------------------------------------
 ! Input        :
 !  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons in nanotube unit cell
+!  nk            number of electron k points
+!  Enk           electron energy bands
+!  rka           k point array
 !  ne            number of energies
 !  Earray(ne)    array of energies (eV)
 ! Output       :
 !  JDOSinter(ne)       joint density of states (states/atom/eV)
-!  JDOSintra(ne)       joint density of states (states/atom/eV)
+!  JDOSintraC(ne)       joint density of states (states/atom/eV)
+!  JDOSintraV(ne)       joint density of states (states/atom/eV)
 !=======================================================================
   IMPLICIT NONE
 
@@ -1146,10 +1153,10 @@ SUBROUTINE tubeJDOS(n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV, JDOSintr
   REAL(8), ALLOCATABLE   :: EnkIntraV(:,:) !(nk,2*(nhex-1))
 
   INTEGER                :: noutInter, noutIntra
-  INTEGER                :: mu1, mu2, k, indexx1, indexx2, i, ie, nn, ii
+  INTEGER                :: mu1, mu2, k, indexx1, indexx2, i, ie, nn
 
   REAL(8)                :: T, trLength
-  REAL(8)                :: rk, rkmin, rkmax, dk, fwhm, fwhm1, E, DSn
+  REAL(8)                :: fwhm, fwhm1, E, DSn
 
 
 ! allocate storage
@@ -1179,8 +1186,8 @@ SUBROUTINE tubeJDOS(n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV, JDOSintr
                 indexx1 = indexx1 + 1
             ELSE
             ! intraband
-                EnkIntraV(k,indexx2) = Enk(2,mu2,k) - Enk(2,mu1,k) ! valence
-                EnkIntraC(k,indexx2) = Enk(1,mu2,k) - Enk(1,mu1,k) ! conduction
+                EnkIntraV(k,indexx2) = Enk(1,mu2,k) - Enk(1,mu1,k) ! valence
+                EnkIntraC(k,indexx2) = Enk(2,mu2,k) - Enk(2,mu1,k) ! conduction
                 indexx2 = indexx2 + 1
             END IF
 
@@ -1236,12 +1243,18 @@ SUBROUTINE tubeJDOSij(mu1,mu2,n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV
 ! nanotube (states/carbon atom/eV)
 !-------------------------------------------------------------------------------
 ! Input        :
+!  mu1, mu1      i and j cutting lines of optical transition
 !  n,m           chiral vector coordinates in (a1,a2)
+!  nhex          number of hexagons in nanotube unit cell
+!  nk            number of electron k points
+!  Enk           electron energy bands
+!  rka           k point array
 !  ne            number of energies
 !  Earray(ne)    array of energies (eV)
 ! Output       :
 !  JDOSinter(ne)       joint density of states (states/atom/eV)
-!  JDOSintra(ne)       joint density of states (states/atom/eV)
+!  JDOSintraV(ne)       joint density of states (states/atom/eV) in valence zone
+!  JDOSintraC(ne)       joint density of states (states/atom/eV) in condaction zone
 !=======================================================================
   IMPLICIT NONE
 
@@ -1267,10 +1280,10 @@ SUBROUTINE tubeJDOSij(mu1,mu2,n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV
   REAL(8), ALLOCATABLE   :: EnkIntraV(:,:) !(nk,2*(nhex-1))
 
   INTEGER                :: noutInter, noutIntra
-  INTEGER                :: k, indexx1, indexx2, i, ie, nn, ii
+  INTEGER                :: k, indexx1, indexx2, ie, nn
 
   REAL(8)                :: T, trLength
-  REAL(8)                :: rk, rkmin, rkmax, dk, fwhm, fwhm1, E, DSn
+  REAL(8)                :: fwhm, fwhm1, E, DSn
 
 
 ! allocate storage
@@ -1301,8 +1314,8 @@ SUBROUTINE tubeJDOSij(mu1,mu2,n,m,nhex,nk,Enk,rka,ne,Earray,JDOSinter,JDOSintraV
         indexx1 = indexx1 + 1
     ELSE
     ! intraband
-        EnkIntraV(k,indexx2) = Enk(2,mu2,k) - Enk(2,mu1,k) ! valence
-        EnkIntraC(k,indexx2) = Enk(1,mu2,k) - Enk(1,mu1,k) ! conduction
+        EnkIntraV(k,indexx2) = Enk(1,mu2,k) - Enk(1,mu1,k) ! valence
+        EnkIntraC(k,indexx2) = Enk(2,mu1,k) - Enk(2,mu2,k) ! conduction
         indexx2 = indexx2 + 1
     END IF
   END DO
